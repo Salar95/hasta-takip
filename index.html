@@ -162,7 +162,18 @@
   <p>Bu uygulamanın çalışması için önce Supabase bağlantı bilgilerini girmeniz gerekiyor. HTML dosyasının en üstünde <code>SUPABASE_URL</code> ve <code>SUPABASE_ANON_KEY</code> değerlerini kendi Supabase projenizden alıp yapıştırın.</p>
 </div>
 
-<div class="app" id="mainApp">
+<div id="loginGate" class="setup-gate" style="display:none;">
+  <h2>Giriş Yap</h2>
+  <label>E-posta</label>
+  <input type="text" id="loginEmail" placeholder="ornek@hastane.com" autocomplete="username">
+  <label>Şifre</label>
+  <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+  <button class="btn btn-primary" onclick="doLogin()">Giriş Yap</button>
+  <div class="status-msg" id="loginStatus"></div>
+  <p style="margin-top:14px;font-size:12px;">Hesabınız yoksa yöneticinizden sizin için bir kullanıcı adı ve şifre oluşturmasını isteyin.</p>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
 
   <header class="top">
     <div class="logo-corner">
@@ -171,7 +182,7 @@
       </div>
       <span>Sağlık Turizmi</span>
     </div>
-    <div class="eyebrow">Tercümanlık Birimi</div>
+    <button onclick="doLogout()" style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:11px;font-weight:600;padding:6px 11px;border-radius:8px;cursor:pointer;">Çıkış Yap</button>
     <h1>Hasta Takip Sistemi</h1>
     <div class="subdate" id="todayLabel">—</div>
     <svg class="vitalline" viewBox="0 0 300 22" preserveAspectRatio="none">
@@ -330,14 +341,51 @@ function switchTab(tab){
   document.getElementById('panelPat').classList.toggle('active', tab==='pat');
 }
 
-/* ---------- INIT ---------- */
+/* ---------- INIT / AUTH ---------- */
 async function init(){
   if(!SUPABASE_URL || SUPABASE_URL.includes('PASTE_') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('PASTE_')){
-    document.getElementById('mainApp').style.display='none';
     document.getElementById('setupGate').style.display='block';
     return;
   }
   db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const {data:{session}} = await db.auth.getSession();
+  if(!session){
+    document.getElementById('loginGate').style.display='block';
+    return;
+  }
+  await startApp();
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const statusEl = document.getElementById('loginStatus');
+  if(!email || !password){
+    statusEl.textContent = 'E-posta ve şifre girin.';
+    statusEl.classList.add('err');
+    return;
+  }
+  statusEl.classList.remove('err');
+  statusEl.textContent = 'Giriş yapılıyor…';
+
+  const {error} = await db.auth.signInWithPassword({email, password});
+  if(error){
+    statusEl.textContent = 'Giriş başarısız: e-posta veya şifre hatalı.';
+    statusEl.classList.add('err');
+    return;
+  }
+  document.getElementById('loginGate').style.display='none';
+  await startApp();
+}
+
+async function doLogout(){
+  await db.auth.signOut();
+  location.reload();
+}
+
+async function startApp(){
+  document.getElementById('mainApp').style.display='block';
 
   const now = new Date();
   document.getElementById('todayLabel').textContent = `${TR_DAYS[now.getDay()]}, ${fmtDateTR(todayISO())}`;
