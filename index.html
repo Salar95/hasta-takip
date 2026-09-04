@@ -13,7 +13,7 @@
     --ink:#152524;
     --ink-muted:#5D716D;
     --teal:#115BA4;
-    --teal-dark:#0C4178;a
+    --teal-dark:#0C4178;
     --teal-soft:#E4ECF6;
     --amber:#B8791F;
     --amber-soft:#FBF0DC;
@@ -283,6 +283,16 @@
           <div>
             <label>Hasta Soyadı *</label>
             <input type="text" id="pfSurname" placeholder="Soyadı">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>ID (Hasta Kimlik/Pasaport No)</label>
+            <input type="text" id="pfPatientId" placeholder="Örn. 3300105057">
+          </div>
+          <div>
+            <label>Vatandaşlık</label>
+            <input type="text" id="pfNationality" placeholder="Örn. Gürcistan Cumhuriyeti">
           </div>
         </div>
         <div class="row2">
@@ -740,37 +750,248 @@ function renderNotes(){
 /* ================= PROFORMA ================= */
 
 const PF_LABELS = {
-  tr: { title:'PROFORMA FATURA', patientName:'Hasta Adı', patientSurname:'Hasta Soyadı', fileNo:'Dosya/Protokol No', dept:'Bölüm Adı', doctor:'Doktor Adı',
-        col_no:'#', col_sut:'SUT Kodu', col_service:'Mal Hizmet', col_price:'Ücreti', serviceTotal:'Hizmet Toplamı', amountDue:'Ödenecek Tutar',
-        validity:'Bu proformanın geçerlilik süresi 15 gündür. Proforma dışı yapılan her tahlil ve tetkik ayrıca ücretlendirilecektir.',
-        bankInfo:'BANKA HESAP BİLGİLERİ', accHolder:'HESAP SAHİBİ ADI', bankName:'BANKA ADI', branch:'ŞUBE ADI - NO', iban:'HESAP/IBAN NO',
-        taxNo:'Vergi No', taxOffice:'Vergi Dairesi', tradeReg:'Ticaret Sicil No', mersis:'Mersis No', tel:'Tel', fax:'Fax', email:'E-mail', website:'İnternet Sitesi', date:'Tarih' },
-  en: { title:'PROFORMA INVOICE', patientName:'Patient Name', patientSurname:'Patient Surname', fileNo:'File/Protocol No', dept:'Department', doctor:'Doctor',
-        col_no:'#', col_sut:'SUT Code', col_service:'Service', col_price:'Price', serviceTotal:'Service Total', amountDue:'Amount Due',
-        validity:'This proforma is valid for 15 days. Any test or examination performed outside this proforma will be charged separately.',
-        bankInfo:'BANK ACCOUNT DETAILS', accHolder:'ACCOUNT HOLDER', bankName:'BANK NAME', branch:'BRANCH', iban:'ACCOUNT/IBAN NO',
-        taxNo:'Tax No', taxOffice:'Tax Office', tradeReg:'Trade Registry No', mersis:'Mersis No', tel:'Tel', fax:'Fax', email:'Email', website:'Website', date:'Date' },
-  ar: { title:'فاتورة أولية', patientName:'اسم المريض', patientSurname:'اللقب', fileNo:'رقم الملف/البروتوكول', dept:'القسم', doctor:'الطبيب',
-        col_no:'#', col_sut:'رمز SUT', col_service:'الخدمة', col_price:'السعر', serviceTotal:'إجمالي الخدمة', amountDue:'المبلغ المستحق',
-        validity:'هذه الفاتورة الأولية صالحة لمدة 15 يومًا. أي فحص أو تحليل يتم إجراؤه خارج هذه الفاتورة سيتم احتسابه بشكل منفصل.',
-        bankInfo:'معلومات الحساب المصرفي', accHolder:'اسم صاحب الحساب', bankName:'اسم البنك', branch:'اسم/رقم الفرع', iban:'رقم الحساب/الآيبان',
-        taxNo:'الرقم الضريبي', taxOffice:'مكتب الضرائب', tradeReg:'رقم السجل التجاري', mersis:'رقم Mersis', tel:'هاتف', fax:'فاكس', email:'البريد الإلكتروني', website:'الموقع الإلكتروني', date:'التاريخ' },
-  ka: { title:'პროფორმა ინვოისი', patientName:'პაციენტის სახელი', patientSurname:'გვარი', fileNo:'ფაილის/ოქმის ნომერი', dept:'დეპარტამენტი', doctor:'ექიმი',
-        col_no:'#', col_sut:'SUT კოდი', col_service:'მომსახურება', col_price:'ფასი', serviceTotal:'მომსახურების ჯამი', amountDue:'გადასახდელი თანხა',
-        validity:'ეს პროფორმა ინვოისი მოქმედია 15 დღის განმავლობაში. ამ პროფორმის ფარგლებს გარეთ ჩატარებული ნებისმიერი ტესტი ან გამოკვლევა ცალკე დაერიცხება.',
-        bankInfo:'საბანკო ანგარიშის დეტალები', accHolder:'ანგარიშის მფლობელი', bankName:'ბანკის სახელი', branch:'ფილიალი', iban:'ანგარიშის/IBAN ნომერი',
-        taxNo:'საგადასახადო ნომერი', taxOffice:'საგადასახადო ოფისი', tradeReg:'სავაჭრო რეესტრის ნომერი', mersis:'Mersis ნომერი', tel:'ტელ', fax:'ფაქსი', email:'ელ-ფოსტა', website:'ვებგვერდი', date:'თარიღი' }
+  tr: {
+    title:'PROFORMA FATURA', date:'Tarih',
+    noticeIntro:"Faturada belirtilen tutar, sizin tarafınızdan sağlanan anamnez dikkate alınarak hesaplanmıştır ve doktorla yapılacak konsültasyondan sonra değişebilir.",
+    noticeBullets:[
+      "Cerrahi müdahale durumunda, bir önceki gün saat 24:00'ten sonra hem yiyecek hem de su alımı yasaktır.",
+      "Kimlik kartı, Ülkeye Giriş Belgesi veya pasaport zorunludur.",
+      "Reşit olmayan kişi için sınır geçişi, ebeveynlerden birinin refakatinde ve doğum belgesinin ibrazı ile mümkündür.",
+      "Hastanın kullandığı ilaçlar hakkında bilgi verilmesi zorunludur."
+    ],
+    firmaBaslik:'FİRMA BİLGİLERİ', unvan:'Unvan', vergiNo:'Vergi No', vergiDairesi:'Vergi Dairesi', ticaretSicilNo:'Ticaret Sicil No', mersisNo:'Mersis No',
+    tel:'Tel', fax:'Fax', email:'E-mail', website:'İnternet Sitesi',
+    hastaBaslik:'HASTA BİLGİLERİ', idLabel:'ID', bolum:'Bölüm', doktor:'Doktor', hastaAdi:'Hasta Adı', vatandaslik:'Vatandaşlık', proformaNo:'Proforma No',
+    tedaviBaslik:'TEDAVİ BİLGİLERİ',
+    tedaviIntro:[
+      "Kayıt işlemi için hastanın pasaportu gereklidir. Önceki tıbbi kayıtlar klinik değerlendirme için önemlidir ve bu nedenle lütfen randevuya gelirken geçerli tıbbi görüntülerinizi veya belgelerinizi getirin.",
+      "Herhangi bir ulaşım ihtiyacınız varsa, lütfen bilet ve konaklama bilgilerinizi varışınızdan en geç bir gün önce gönderin."
+    ],
+    dahilBaslik:"Yukarıdaki Tedavi Planına dahil olan hizmetler",
+    dahilBullets:[
+      "Danışma",
+      "Serviste yatış süresince bir refakatçi hastanın yanında kalabilir.",
+      "Hastanede yatış sırasında doktor ve hemşire takibi"
+    ],
+    dahilDegilBaslik:"Yukarıdaki Tedavi Planına dahil olmayan hizmetler",
+    dahilDegilBullets:[
+      "Tıbbi Konsültasyonlar",
+      "Serviste/Yoğun Bakım Ünitesinde belirtilen hastane kalış günlerini aşan yatarak tedavi ücretleri",
+      "Tedavi süreciniz sırasında önceden var olan veya işlemle ilgili olmayan durumlara yönelik ilaçlar, tıbbi malzemeler ve tedaviler.",
+      "Bu maliyet tahminleri herhangi bir komplikasyondan kaynaklanan fiyat değişikliklerini kapsamamaktadır.",
+      "Hastanın yoğun bakımda yatışı sırasında refakatçisi hastanede kalamaz ve konaklama ücretleri pakete dahil edilmeyecektir."
+    ],
+    uluslararasiBaslik:"Uluslararası Hastalara Özel Hizmetler",
+    uluslararasiBullets:[
+      "Havaalanı - Otel - Hastane Transferleri",
+      "Anlaşmalı otellerde konaklama rezervasyonu",
+      "Hastane ziyareti sırasında tercümanlık hizmeti",
+      "Tedaviye ilişkin tüm rapor ve tetkiklerin talep edilen dile çevrilmesi."
+    ],
+    finansalBaslik:'FİNANSAL BİLGİLER',
+    finansalBullets:[
+      "Bu belge yalnızca onbeş gün (15 gün) süreyle geçerlidir.",
+      "Tıbbi hizmetlere ilişkin tüm ödemelerin kişisel randevu tarihinden önce veya ilk randevu tarihinde hasta tarafından yapılması beklenmektedir. Parayı kredi kartıyla veya banka havalesiyle ödeyebilirsiniz. Tedavi, bakım veya iyileşme sürecinde faturanın son durumu kontrol edilecektir.",
+      "Yukarıda sunulan fiyatlar TL (Türk Lirası) dışındaki para birimlerinde günlük değişen döviz kurları sebebiyle değişiklik gösterebilir.",
+      "Uluslararası sigortalı hastalar için lütfen önceden Sağlık Turizmi ofisimizle iletişime geçin.",
+      "Taburcu olduktan sonra hesabınızda kalan tüm bakiye veya kredi iade edilecektir.",
+      "Proforma Faturada sunulan rakamlar tahminidir ve tıbbi tedavi tamamlandıktan sonra fatura oluşturulduğunda size nihai ücretler hakkında bilgilendirme yapılacaktır.",
+      "İhtiyaç duyulması durumunda hastanın uçak veya ambulans ile başka bir yere nakledilmesinde oluşacak ödemeler hastanın/hastanın yasal temsilcisi tarafından karşılanır.",
+      "Ödemelerde 500 EURO'luk banknotlar kabul edilmemektedir.",
+      "Hesabımıza herhangi bir tutar aktarırken lütfen hastanın adını belirtiniz."
+    ],
+    bankaBaslik:'BANKA HESAP BİLGİLERİ', hesapSahibi:'HESAP SAHİBİ ADI', bankaAdi:'BANKA ADI', swiftKodu:'SWIFT KODU', hesapIban:'HESAP / IBAN NO',
+    onerilenBaslik:'ÖNERİLEN TEDAVİ VE TAHMİNİ MALİYET AYRINTILARI', colItem:'Tetkik / Sarf / Malzeme Adı', colQty:'Miktarı', toplamiSuffix:' Toplamı:', genelToplam:'Genel Toplam'
+  },
+  en: {
+    title:'PROFORMA INVOICE', date:'Date',
+    noticeIntro:"The amount stated in this invoice has been calculated based on the medical history you provided, and may change following a consultation with the doctor.",
+    noticeBullets:[
+      "In case of a surgical procedure, both food and water intake are prohibited after 24:00 the night before.",
+      "An ID card, entry document, or passport is mandatory.",
+      "For a minor crossing the border, this is only possible when accompanied by a parent and presenting a birth certificate.",
+      "Information about medications the patient is currently using must be provided."
+    ],
+    firmaBaslik:'COMPANY INFORMATION', unvan:'Company Name', vergiNo:'Tax No', vergiDairesi:'Tax Office', ticaretSicilNo:'Trade Registry No', mersisNo:'Mersis No',
+    tel:'Tel', fax:'Fax', email:'E-mail', website:'Website',
+    hastaBaslik:'PATIENT INFORMATION', idLabel:'ID', bolum:'Department', doktor:'Doctor', hastaAdi:'Patient Name', vatandaslik:'Nationality', proformaNo:'Proforma No',
+    tedaviBaslik:'TREATMENT INFORMATION',
+    tedaviIntro:[
+      "The patient's passport is required for registration. Prior medical records are important for clinical evaluation, so please bring valid medical imaging or documents with you to the appointment.",
+      "If you require any transportation arrangements, please send your ticket and accommodation details at least one day before your arrival."
+    ],
+    dahilBaslik:"Services included in the treatment plan above",
+    dahilBullets:[
+      "Consultation",
+      "One companion may stay with the patient during the hospital stay.",
+      "Doctor and nurse follow-up during hospitalization"
+    ],
+    dahilDegilBaslik:"Services not included in the treatment plan above",
+    dahilDegilBullets:[
+      "Medical consultations",
+      "Inpatient treatment fees for hospital stay exceeding the days specified for the ward/ICU",
+      "Medications, medical supplies, and treatments for pre-existing conditions unrelated to the procedure during your treatment process.",
+      "These cost estimates do not cover price changes arising from any complications.",
+      "During the patient's stay in intensive care, the companion cannot stay at the hospital and accommodation costs will not be included in the package."
+    ],
+    uluslararasiBaslik:"Services Exclusive to International Patients",
+    uluslararasiBullets:[
+      "Airport – Hotel – Hospital Transfers",
+      "Accommodation reservation at partner hotels",
+      "Interpreting services during hospital visits",
+      "Translation of all reports and test results related to treatment into the requested language."
+    ],
+    finansalBaslik:'FINANCIAL INFORMATION',
+    finansalBullets:[
+      "This document is valid for fifteen (15) days only.",
+      "All payments for medical services are expected to be made by the patient before the personal appointment date or on the date of the first appointment. You may pay by credit card or bank transfer. The final status of the invoice will be checked during the treatment, care, or recovery process.",
+      "The prices presented above may vary in currencies other than TL (Turkish Lira) due to daily changing exchange rates.",
+      "For internationally insured patients, please contact our Health Tourism office in advance.",
+      "Any remaining balance or credit in your account after discharge will be refunded.",
+      "The figures presented in the Proforma Invoice are estimates, and once the treatment is completed and the invoice is issued, you will be informed of the final charges.",
+      "If the patient needs to be transported elsewhere by air or ambulance, the resulting costs will be covered by the patient or the patient's legal representative.",
+      "500 EURO banknotes are not accepted for payments.",
+      "Please state the patient's name when transferring any amount to our account."
+    ],
+    bankaBaslik:'BANK ACCOUNT DETAILS', hesapSahibi:'ACCOUNT HOLDER NAME', bankaAdi:'BANK NAME', swiftKodu:'SWIFT CODE', hesapIban:'ACCOUNT / IBAN NO',
+    onerilenBaslik:'PROPOSED TREATMENT AND ESTIMATED COST DETAILS', colItem:'Test / Supply / Material Name', colQty:'Quantity', toplamiSuffix:' Subtotal:', genelToplam:'Grand Total'
+  },
+  ar: {
+    title:'فاتورة أولية', date:'التاريخ',
+    noticeIntro:"تم احتساب المبلغ المذكور في هذه الفاتورة بناءً على التاريخ الطبي الذي قدمتموه، وقد يتغير بعد الاستشارة مع الطبيب.",
+    noticeBullets:[
+      "في حالة إجراء عملية جراحية، يُمنع تناول الطعام والماء بعد الساعة 24:00 من الليلة السابقة.",
+      "يلزم إبراز بطاقة الهوية أو وثيقة الدخول أو جواز السفر.",
+      "بالنسبة للقاصر، يمكن عبور الحدود فقط برفقة أحد الوالدين وإبراز شهادة الميلاد.",
+      "يجب تقديم معلومات حول الأدوية التي يستخدمها المريض حاليًا."
+    ],
+    firmaBaslik:'معلومات الشركة', unvan:'اسم الشركة', vergiNo:'الرقم الضريبي', vergiDairesi:'مكتب الضرائب', ticaretSicilNo:'رقم السجل التجاري', mersisNo:'رقم Mersis',
+    tel:'هاتف', fax:'فاكس', email:'البريد الإلكتروني', website:'الموقع الإلكتروني',
+    hastaBaslik:'معلومات المريض', idLabel:'الرقم التعريفي', bolum:'القسم', doktor:'الطبيب', hastaAdi:'اسم المريض', vatandaslik:'الجنسية', proformaNo:'رقم الفاتورة الأولية',
+    tedaviBaslik:'معلومات العلاج',
+    tedaviIntro:[
+      "جواز سفر المريض مطلوب لإتمام التسجيل. السجلات الطبية السابقة مهمة للتقييم السريري، لذا يرجى إحضار الصور أو المستندات الطبية الصالحة معك عند الموعد.",
+      "إذا كنت بحاجة إلى ترتيبات نقل، يرجى إرسال تفاصيل التذكرة والإقامة قبل يوم واحد على الأقل من وصولك."
+    ],
+    dahilBaslik:"الخدمات المشمولة في خطة العلاج أعلاه",
+    dahilBullets:[
+      "الاستشارة",
+      "يمكن لمرافق واحد البقاء مع المريض أثناء الإقامة في المستشفى.",
+      "متابعة الطبيب والممرضة أثناء الإقامة في المستشفى"
+    ],
+    dahilDegilBaslik:"الخدمات غير المشمولة في خطة العلاج أعلاه",
+    dahilDegilBullets:[
+      "الاستشارات الطبية",
+      "رسوم العلاج الداخلي لمدة الإقامة في المستشفى التي تتجاوز الأيام المحددة للجناح/العناية المركزة",
+      "الأدوية والمستلزمات الطبية والعلاجات المتعلقة بحالات موجودة مسبقًا وغير مرتبطة بالإجراء أثناء عملية علاجك.",
+      "لا تغطي هذه التقديرات التكاليف الناتجة عن أي مضاعفات.",
+      "أثناء إقامة المريض في العناية المركزة، لا يمكن للمرافق البقاء في المستشفى ولن تكون تكاليف الإقامة مشمولة في الباقة."
+    ],
+    uluslararasiBaslik:"خدمات خاصة بالمرضى الدوليين",
+    uluslararasiBullets:[
+      "النقل بين المطار والفندق والمستشفى",
+      "حجز الإقامة في الفنادق المتعاقد معها",
+      "خدمة الترجمة الفورية أثناء زيارات المستشفى",
+      "ترجمة جميع التقارير والفحوصات المتعلقة بالعلاج إلى اللغة المطلوبة."
+    ],
+    finansalBaslik:'المعلومات المالية',
+    finansalBullets:[
+      "هذه الوثيقة صالحة لمدة خمسة عشر (15) يومًا فقط.",
+      "يُتوقع أن يقوم المريض بسداد جميع المدفوعات المتعلقة بالخدمات الطبية قبل تاريخ الموعد الشخصي أو في تاريخ الموعد الأول. يمكنكم الدفع عن طريق بطاقة الائتمان أو الحوالة المصرفية. سيتم التحقق من الحالة النهائية للفاتورة أثناء عملية العلاج أو الرعاية أو التعافي.",
+      "قد تختلف الأسعار المذكورة أعلاه بعملات أخرى غير الليرة التركية بسبب تغير أسعار الصرف يوميًا.",
+      "بالنسبة للمرضى المؤمّن عليهم دوليًا، يرجى التواصل مسبقًا مع مكتب السياحة الصحية لدينا.",
+      "سيتم استرداد أي رصيد أو ائتمان متبقٍ في حسابكم بعد الخروج من المستشفى.",
+      "الأرقام المقدمة في الفاتورة الأولية هي تقديرية، وبعد اكتمال العلاج وإصدار الفاتورة النهائية سيتم إبلاغكم بالرسوم النهائية.",
+      "في حال الحاجة إلى نقل المريض إلى مكان آخر عن طريق الطائرة أو سيارة الإسعاف، تقع التكاليف الناتجة على عاتق المريض أو ممثله القانوني.",
+      "لا يتم قبول الأوراق النقدية من فئة 500 يورو في المدفوعات.",
+      "يرجى ذكر اسم المريض عند تحويل أي مبلغ إلى حسابنا."
+    ],
+    bankaBaslik:'معلومات الحساب المصرفي', hesapSahibi:'اسم صاحب الحساب', bankaAdi:'اسم البنك', swiftKodu:'رمز السويفت', hesapIban:'رقم الحساب / الآيبان',
+    onerilenBaslik:'تفاصيل العلاج المقترح والتكلفة التقديرية', colItem:'اسم الفحص / المستلزم / المادة', colQty:'الكمية', toplamiSuffix:' الإجمالي الفرعي:', genelToplam:'الإجمالي الكلي'
+  },
+  ka: {
+    title:'პროფორმა ინვოისი', date:'თარიღი',
+    noticeIntro:"ინვოისში მითითებული თანხა გამოთვლილია თქვენ მიერ მოწოდებული სამედიცინო ისტორიის საფუძველზე და შეიძლება შეიცვალოს ექიმთან კონსულტაციის შემდეგ.",
+    noticeBullets:[
+      "ქირურგიული ჩარევის შემთხვევაში, წინა დღეს 24:00 საათის შემდეგ საკვების და წყლის მიღება აკრძალულია.",
+      "საჭიროა პირადობის მოწმობა, ქვეყანაში შესვლის დოკუმენტი ან პასპორტი.",
+      "არასრულწლოვნისთვის საზღვრის გადაკვეთა შესაძლებელია მხოლოდ ერთ-ერთი მშობლის თანხლებით და დაბადების მოწმობის წარდგენით.",
+      "სავალდებულოა ინფორმაციის მიწოდება პაციენტის მიერ მიღებული მედიკამენტების შესახებ."
+    ],
+    firmaBaslik:'კომპანიის ინფორმაცია', unvan:'კომპანიის სახელი', vergiNo:'საგადასახადო ნომერი', vergiDairesi:'საგადასახადო ოფისი', ticaretSicilNo:'სავაჭრო რეესტრის ნომერი', mersisNo:'Mersis ნომერი',
+    tel:'ტელ', fax:'ფაქსი', email:'ელ-ფოსტა', website:'ვებგვერდი',
+    hastaBaslik:'პაციენტის ინფორმაცია', idLabel:'ID', bolum:'დეპარტამენტი', doktor:'ექიმი', hastaAdi:'პაციენტის სახელი', vatandaslik:'მოქალაქეობა', proformaNo:'პროფორმის ნომერი',
+    tedaviBaslik:'მკურნალობის ინფორმაცია',
+    tedaviIntro:[
+      "რეგისტრაციისთვის საჭიროა პაციენტის პასპორტი. წინა სამედიცინო ჩანაწერები მნიშვნელოვანია კლინიკური შეფასებისთვის, ამიტომ გთხოვთ, ვიზიტზე ჩამოსვლისას თან იქონიოთ მოქმედი სამედიცინო გამოსახულებები ან დოკუმენტები.",
+      "თუ გჭირდებათ ტრანსპორტირების მოწყობა, გთხოვთ, გამოგზავნოთ ბილეთისა და საცხოვრებლის დეტალები ჩამოსვლამდე მინიმუმ ერთი დღით ადრე."
+    ],
+    dahilBaslik:"ზემოთ მოცემულ სამკურნალო გეგმაში შემავალი მომსახურებები",
+    dahilBullets:[
+      "კონსულტაცია",
+      "ერთ თანმხლებ პირს შეუძლია დარჩეს პაციენტთან ჰოსპიტალიზაციის პერიოდში.",
+      "ექიმისა და ექთნის მეთვალყურეობა ჰოსპიტალიზაციის დროს"
+    ],
+    dahilDegilBaslik:"ზემოთ მოცემულ სამკურნალო გეგმაში არ შემავალი მომსახურებები",
+    dahilDegilBullets:[
+      "სამედიცინო კონსულტაციები",
+      "პალატაში/ინტენსიურ თერაპიაში მითითებულ დღეებზე მეტი ხანგრძლივობის სტაციონარული მკურნალობის საფასური",
+      "მკურნალობის პროცესში წინასწარ არსებული ან პროცედურასთან დაუკავშირებელი მდგომარეობებისთვის განკუთვნილი მედიკამენტები, სამედიცინო მასალები და მკურნალობები.",
+      "ეს ღირებულების შეფასებები არ მოიცავს რაიმე გართულებით გამოწვეულ ფასის ცვლილებებს.",
+      "პაციენტის ინტენსიურ თერაპიაში ყოფნის დროს თანმხლები პირი საავადმყოფოში ვერ დარჩება და საცხოვრებლის ხარჯები პაკეტში არ შედის."
+    ],
+    uluslararasiBaslik:"საერთაშორისო პაციენტებისთვის განკუთვნილი მომსახურებები",
+    uluslararasiBullets:[
+      "აეროპორტი - სასტუმრო - საავადმყოფოს ტრანსფერები",
+      "საცხოვრებლის დაჯავშნა პარტნიორ სასტუმროებში",
+      "თარჯიმნის მომსახურება საავადმყოფოში ვიზიტისას",
+      "მკურნალობასთან დაკავშირებული ყველა ანგარიშისა და გამოკვლევის თარგმნა მოთხოვნილ ენაზე."
+    ],
+    finansalBaslik:'ფინანსური ინფორმაცია',
+    finansalBullets:[
+      "ეს დოკუმენტი მოქმედია მხოლოდ თხუთმეტი (15) დღის განმავლობაში.",
+      "სამედიცინო მომსახურებასთან დაკავშირებული ყველა გადახდა მოსალოდნელია განხორციელდეს პაციენტის მიერ პირადი ვიზიტის თარიღამდე ან პირველი ვიზიტის დღეს. გადახდა შესაძლებელია საკრედიტო ბარათით ან საბანკო გადარიცხვით. ინვოისის საბოლოო მდგომარეობა შემოწმდება მკურნალობის, მოვლის ან გამოჯანმრთელების პროცესში.",
+      "ზემოთ მოცემული ფასები შეიძლება შეიცვალოს თურქულ ლირაზე (TL) გარდა სხვა ვალუტებში, ყოველდღიურად ცვალებადი გაცვლითი კურსის გამო.",
+      "საერთაშორისო დაზღვეული პაციენტებისთვის გთხოვთ წინასწარ დაუკავშირდეთ ჩვენს სამედიცინო ტურიზმის ოფისს.",
+      "გაწერის შემდეგ თქვენს ანგარიშზე დარჩენილი ნებისმიერი ნაშთი ან კრედიტი დაგიბრუნდებათ.",
+      "პროფორმა ინვოისში მოცემული ციფრები არის სავარაუდო და მკურნალობის დასრულების შემდეგ, ინვოისის გამოწერისას, თქვენ მიიღებთ ინფორმაციას საბოლოო საფასურის შესახებ.",
+      "საჭიროების შემთხვევაში პაციენტის თვითმფრინავით ან სასწრაფო დახმარებით სხვაგან გადაყვანასთან დაკავშირებულ ხარჯებს ანაზღაურებს პაციენტი ან მისი კანონიერი წარმომადგენელი.",
+      "გადახდებში 500 ევროიანი ბანკნოტები არ მიიღება.",
+      "ჩვენს ანგარიშზე ნებისმიერი თანხის გადარიცხვისას გთხოვთ მიუთითოთ პაციენტის სახელი."
+    ],
+    bankaBaslik:'საბანკო ანგარიშის დეტალები', hesapSahibi:'ანგარიშის მფლობელის სახელი', bankaAdi:'ბანკის სახელი', swiftKodu:'SWIFT კოდი', hesapIban:'ანგარიშის / IBAN ნომერი',
+    onerilenBaslik:'შემოთავაზებული მკურნალობა და სავარაუდო ღირებულების დეტალები', colItem:'ტესტის / მასალის დასახელება', colQty:'რაოდენობა', genelToplam:'საერთო ჯამი', toplamiSuffix:' ჯამი:'
+  }
 };
 
 const PF_COMPANY = {
-  name: 'ANADOLU ÖZEL SAĞLIK HİZMETLERİ OTOMOTİV TURİZM VE TİCARET A. Ş.',
-  address: 'Kemerkaya Mahallesi Devlet Sahil Yolu İller Sokak No:27-29 Ortahisar/TRABZON',
-  taxNo: '0680644764', taxOffice: 'KARADENİZ', tradeReg: '13545', mersis: '0-068064476400016',
+  unvan: 'Anadolu Özel Sağlık Hizmetleri Otomotiv Tur. ve Tic. A. Ş.',
+  vergiNo: '0680644764', vergiDairesi: 'Karadeniz V. D.', ticaretSicilNo: '13545', mersisNo: '0-068064476400016',
   tel: '+90 462 444 44 61', fax: '+90 462 326 36 30', email: 'info@imperialhastanesi.com', website: 'www.imperialhastanesi.com'
 };
 const PF_BANK = {
-  accHolder: 'ANADOLU ÖZEL SAĞLIK HİZMETLERİ OTO. TUR. VE TİC. A. Ş.',
-  bankName: 'AKBANK', branch: 'TRABZON ŞUBESİ (0100)', iban: 'TR68 0004 6001 0000 1000 0003 09'
+  hesapSahibi: 'ANADOLU OZEL SAGLIK HIZMETLERI OTO. TUR VE TIC. A. S.',
+  bankaAdi: 'AKBANK', swiftKodu: 'AKBKTRIS', hesapIban: '0000309   TR68 0004 6001 0000 1000 0003 09'
+};
+
+// Maps our internal service categories into the broader printed subtotal groups
+const PF_CATEGORY_GROUPS = {
+  tr: { 'Muayene':'MUAYENE', 'Kan/İdrar/Gaita':'LABORATUAR', 'Biyokimya':'LABORATUAR', 'Hormon':'LABORATUAR',
+        'MR':'RADYOLOJİ', 'BT':'RADYOLOJİ', 'US':'RADYOLOJİ', 'Renkli Doppler':'RADYOLOJİ',
+        'Göz':'GÖZ', 'Odyoloji':'ODYOLOJİ', 'Kardiyoloji Tetkikleri':'KARDİYOLOJİ',
+        'Gastro/Genel Cerrahi':'GASTROENTEROLOJİ', 'Sinir ve Kas Tetkikleri':'NÖROLOJİ (EEG/EMG)' },
+  en: { 'Muayene':'CONSULTATION', 'Kan/İdrar/Gaita':'LABORATORY', 'Biyokimya':'LABORATORY', 'Hormon':'LABORATORY',
+        'MR':'RADIOLOGY', 'BT':'RADIOLOGY', 'US':'RADIOLOGY', 'Renkli Doppler':'RADIOLOGY',
+        'Göz':'OPHTHALMOLOGY', 'Odyoloji':'AUDIOLOGY', 'Kardiyoloji Tetkikleri':'CARDIOLOGY',
+        'Gastro/Genel Cerrahi':'GASTROENTEROLOGY', 'Sinir ve Kas Tetkikleri':'NEUROLOGY (EEG/EMG)' },
+  ar: { 'Muayene':'الاستشارة', 'Kan/İdrar/Gaita':'المختبر', 'Biyokimya':'المختبر', 'Hormon':'المختبر',
+        'MR':'الأشعة', 'BT':'الأشعة', 'US':'الأشعة', 'Renkli Doppler':'الأشعة',
+        'Göz':'طب العيون', 'Odyoloji':'السمعيات', 'Kardiyoloji Tetkikleri':'أمراض القلب',
+        'Gastro/Genel Cerrahi':'الجهاز الهضمي', 'Sinir ve Kas Tetkikleri':'الأعصاب (EEG/EMG)' },
+  ka: { 'Muayene':'კონსულტაცია', 'Kan/İdrar/Gaita':'ლაბორატორია', 'Biyokimya':'ლაბორატორია', 'Hormon':'ლაბორატორია',
+        'MR':'რადიოლოგია', 'BT':'რადიოლოგია', 'US':'რადიოლოგია', 'Renkli Doppler':'რადიოლოგია',
+        'Göz':'ოფთალმოლოგია', 'Odyoloji':'აუდიოლოგია', 'Kardiyoloji Tetkikleri':'კარდიოლოგია',
+        'Gastro/Genel Cerrahi':'გასტროენტეროლოგია', 'Sinir ve Kas Tetkikleri':'ნევროლოგია (EEG/EMG)' }
 };
 
 async function loadServices(){
@@ -816,7 +1037,7 @@ function addToCart(serviceId){
   if(!s) return;
   const existing = cart.find(c=>c.id===serviceId);
   if(existing){ existing.qty += 1; }
-  else{ cart.push({id:s.id, name_tr:s.name_tr, name_en:s.name_en, sut_code:s.sut_code, price:s.price, qty:1}); }
+  else{ cart.push({id:s.id, category:s.category, name_tr:s.name_tr, name_en:s.name_en, sut_code:s.sut_code, price:s.price, qty:1}); }
   renderCart();
 }
 
@@ -863,6 +1084,8 @@ async function generateProforma(){
   const statusEl = document.getElementById('pfStatus');
   const name = document.getElementById('pfName').value.trim();
   const surname = document.getElementById('pfSurname').value.trim();
+  const patientId = document.getElementById('pfPatientId').value.trim();
+  const nationality = document.getElementById('pfNationality').value.trim();
   const fileNo = document.getElementById('pfFileNo').value.trim();
   const dept = document.getElementById('pfDept').value.trim();
   const doctor = document.getElementById('pfDoctor').value.trim();
@@ -879,21 +1102,46 @@ async function generateProforma(){
     return;
   }
   statusEl.classList.remove('err');
-  statusEl.textContent = '';
+  statusEl.textContent = 'Oluşturuluyor…';
 
   const L = PF_LABELS[lang];
+  const GROUPS = PF_CATEGORY_GROUPS[lang];
   const isRtl = lang === 'ar';
   const total = cart.reduce((sum,c)=>sum + c.price*c.qty, 0);
   const logoSrc = document.querySelector('.logo-corner img') ? document.querySelector('.logo-corner img').src : '';
 
-  const rows = cart.map((c,i) => `
-    <tr>
-      <td style="text-align:center;">${i+1}</td>
-      <td>${esc(c.sut_code||'')}</td>
-      <td>${esc(lang==='tr' ? c.name_tr : c.name_en)}</td>
-      <td style="text-align:right;">${fmtMoney(c.price*c.qty)}</td>
-    </tr>
-  `).join('');
+  // Auto proforma number: YEAR-sequence based on existing count in DB
+  let seq = 1;
+  try{
+    const {count} = await db.from('proformas').select('*', {count:'exact', head:true});
+    seq = (count || 0) + 1;
+  }catch(e){}
+  const proformaNo = new Date().getFullYear() + '-' + String(seq).padStart(5,'0');
+
+  // Group cart items into printed subtotal buckets, preserving first-seen order
+  const groupOrder = [];
+  const groupedItems = {};
+  cart.forEach(c=>{
+    const groupName = GROUPS[c.category] || c.category;
+    if(!groupedItems[groupName]){ groupedItems[groupName] = []; groupOrder.push(groupName); }
+    groupedItems[groupName].push(c);
+  });
+
+  const tableRows = groupOrder.map(groupName=>{
+    const items = groupedItems[groupName];
+    const subtotal = items.reduce((s,c)=>s + c.price*c.qty, 0);
+    const itemRows = items.map(c => `
+      <tr><td>${esc(lang==='tr' ? c.name_tr : c.name_en)}</td><td style="text-align:center;">${c.qty}</td></tr>
+    `).join('');
+    const subtotalRow = `
+      <tr><td style="text-align:right;font-weight:bold;background:#f2f2f2;">${esc(groupName)}${L.toplamiSuffix}</td><td style="text-align:center;font-weight:bold;background:#f2f2f2;">${fmtMoney(subtotal)}</td></tr>
+    `;
+    return itemRows + subtotalRow;
+  }).join('');
+
+  function bulletList(items){
+    return '<ul style="margin:4px 0 8px 0;padding-'+(isRtl?'right':'left')+':18px;">' + items.map(x=>`<li>${esc(x)}</li>`).join('') + '</ul>';
+  }
 
   const printHtml = `<!DOCTYPE html>
 <html lang="${lang}" dir="${isRtl?'rtl':'ltr'}">
@@ -901,64 +1149,99 @@ async function generateProforma(){
 <meta charset="UTF-8">
 <title>${L.title} — ${esc(name)} ${esc(surname)}</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;margin:24px;}
-  .head{display:flex;justify-content:space-between;align-items:flex-start;border:2px solid #0C4178;padding:10px;}
-  .head img{height:50px;}
-  .title{font-size:16px;font-weight:bold;color:#0C4178;text-align:center;}
-  .company-box{font-size:10.5px;line-height:1.5;text-align:${isRtl?'left':'right'};}
-  .info-box{border:1px solid #0C4178;padding:10px;margin-top:14px;font-size:12px;}
-  .info-box div{margin-bottom:4px;}
-  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:11.5px;}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#111;margin:22px;line-height:1.5;}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .head img{height:55px;}
+  .datebox{border:1px solid #999;padding:6px 12px;font-size:12px;font-weight:bold;}
+  .section-header{background:#B03A2E;color:#fff;text-align:center;font-weight:bold;padding:6px;margin:14px 0 6px;font-size:13px;letter-spacing:.03em;}
+  .notice{font-weight:bold;text-align:center;margin:8px 0;}
+  .notice-bullets{font-size:10.5px;}
+  .two-col{display:flex;gap:24px;}
+  .two-col > div{flex:1;}
+  .field-row{margin-bottom:4px;}
+  .field-row b{display:inline-block;min-width:140px;}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px;}
   th{background:#0C4178;color:#fff;padding:6px 8px;text-align:${isRtl?'right':'left'};}
-  td{border:1px solid #ccc;padding:6px 8px;}
-  .totals{margin-top:10px;text-align:${isRtl?'left':'right'};font-size:13px;}
-  .totals div{margin-bottom:4px;}
-  .validity{margin-top:16px;font-size:10.5px;color:#444;}
-  .bank{margin-top:16px;border:1px solid #0C4178;padding:10px;font-size:11px;}
+  td{border:1px solid #ccc;padding:5px 8px;}
+  .totals{margin-top:10px;text-align:${isRtl?'left':'right'};font-size:14px;}
+  .totals b{color:#B03A2E;}
   .bank div{margin-bottom:3px;}
+  .page-break{page-break-before:always;}
   @media print{ body{margin:10mm;} }
 </style>
 </head>
 <body>
   <div class="head">
     <img src="${logoSrc}" alt="logo">
-    <div class="title">${L.title}<br><span style="font-size:11px;font-weight:normal;">${L.date}: ${fmtDateSlash()}</span></div>
-    <div class="company-box">
-      <b>${PF_COMPANY.name}</b><br>${PF_COMPANY.address}<br>
-      ${L.taxNo}: ${PF_COMPANY.taxNo} &nbsp; ${L.taxOffice}: ${PF_COMPANY.taxOffice}<br>
-      ${L.tradeReg}: ${PF_COMPANY.tradeReg} &nbsp; ${L.mersis}: ${PF_COMPANY.mersis}<br>
-      ${L.tel}: ${PF_COMPANY.tel} &nbsp; ${L.fax}: ${PF_COMPANY.fax}<br>
-      ${L.email}: ${PF_COMPANY.email} &nbsp; ${L.website}: ${PF_COMPANY.website}
+    <div class="datebox">${L.date} : ${fmtDateSlash()}</div>
+  </div>
+  <div class="section-header">${L.title}</div>
+
+  <div class="notice">${L.noticeIntro}</div>
+  <div class="notice-bullets">${bulletList(L.noticeBullets)}</div>
+
+  <div class="section-header">${L.firmaBaslik}</div>
+  <div class="two-col">
+    <div>
+      <div class="field-row"><b>${L.unvan}</b>: ${PF_COMPANY.unvan}</div>
+      <div class="field-row"><b>${L.vergiNo}</b>: ${PF_COMPANY.vergiNo}</div>
+      <div class="field-row"><b>${L.vergiDairesi}</b>: ${PF_COMPANY.vergiDairesi}</div>
+      <div class="field-row"><b>${L.ticaretSicilNo}</b>: ${PF_COMPANY.ticaretSicilNo}</div>
+      <div class="field-row"><b>${L.mersisNo}</b>: ${PF_COMPANY.mersisNo}</div>
+    </div>
+    <div>
+      <div class="field-row"><b>${L.tel}</b>: ${PF_COMPANY.tel}</div>
+      <div class="field-row"><b>${L.fax}</b>: ${PF_COMPANY.fax}</div>
+      <div class="field-row"><b>${L.email}</b>: ${PF_COMPANY.email}</div>
+      <div class="field-row"><b>${L.website}</b>: ${PF_COMPANY.website}</div>
     </div>
   </div>
 
-  <div class="info-box">
-    <div><b>${L.patientName}:</b> ${esc(name)}</div>
-    <div><b>${L.patientSurname}:</b> ${esc(surname)}</div>
-    <div><b>${L.fileNo}:</b> ${esc(fileNo)}</div>
-    <div><b>${L.dept}:</b> ${esc(dept)}</div>
-    <div><b>${L.doctor}:</b> ${esc(doctor)}</div>
+  <div class="section-header">${L.hastaBaslik}</div>
+  <div class="two-col">
+    <div>
+      <div class="field-row"><b>${L.idLabel}</b>: ${esc(patientId)}</div>
+      <div class="field-row"><b>${L.bolum}</b>: ${esc(dept)}</div>
+      <div class="field-row"><b>${L.doktor}</b>: ${esc(doctor)}</div>
+    </div>
+    <div>
+      <div class="field-row"><b>${L.hastaAdi}</b>: ${esc(name)} ${esc(surname)}</div>
+      <div class="field-row"><b>${L.vatandaslik}</b>: ${esc(nationality)}</div>
+      <div class="field-row"><b>${L.proformaNo}</b>: ${proformaNo}${fileNo?(' / '+esc(fileNo)):''}</div>
+    </div>
   </div>
 
-  <table>
-    <thead><tr><th>${L.col_no}</th><th>${L.col_sut}</th><th>${L.col_service}</th><th style="text-align:right;">${L.col_price}</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
+  <div class="section-header">${L.tedaviBaslik}</div>
+  ${L.tedaviIntro.map(t=>`<div style="margin-bottom:6px;">${esc(t)}</div>`).join('')}
+  <div><b>${L.dahilBaslik}</b></div>
+  ${bulletList(L.dahilBullets)}
+  <div><b>${L.dahilDegilBaslik}</b></div>
+  ${bulletList(L.dahilDegilBullets)}
+  <div><b>${L.uluslararasiBaslik}</b></div>
+  ${bulletList(L.uluslararasiBullets)}
 
-  <div class="totals">
-    <div>${L.serviceTotal}: <b>${fmtMoney(total)}</b></div>
-    <div>${L.amountDue}: <b>${fmtMoney(total)}</b></div>
-  </div>
+  <div class="section-header">${L.finansalBaslik}</div>
+  ${bulletList(L.finansalBullets)}
 
-  <div class="validity">${L.validity}</div>
-
+  <div class="section-header">${L.bankaBaslik}</div>
   <div class="bank">
-    <b>${L.bankInfo}</b><br>
-    <div>${L.accHolder}: ${PF_BANK.accHolder}</div>
-    <div>${L.bankName}: ${PF_BANK.bankName}</div>
-    <div>${L.branch}: ${PF_BANK.branch}</div>
-    <div>${L.iban}: ${PF_BANK.iban}</div>
+    <div><b>${L.hesapSahibi}</b>: ${PF_BANK.hesapSahibi}</div>
+    <div><b>${L.bankaAdi}</b>: ${PF_BANK.bankaAdi}</div>
+    <div><b>${L.swiftKodu}</b>: ${PF_BANK.swiftKodu}</div>
+    <div><b>${L.hesapIban}</b>: ${PF_BANK.hesapIban}</div>
   </div>
+
+  <div class="page-break"></div>
+  <div class="head">
+    <img src="${logoSrc}" alt="logo">
+    <div class="datebox">${L.date} : ${fmtDateSlash()}</div>
+  </div>
+  <div class="section-header">${L.onerilenBaslik}</div>
+  <table>
+    <thead><tr><th>${L.colItem}</th><th style="text-align:center;">${L.colQty}</th></tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="totals">${L.genelToplam}: <b>${fmtMoney(total)}</b></div>
 
   <script>
     window.onload = function(){ setTimeout(function(){ window.print(); }, 300); };
@@ -977,7 +1260,7 @@ async function generateProforma(){
     items: cart, total: total
   });
 
-  statusEl.textContent = 'Proforma oluşturuldu.';
+  statusEl.textContent = 'Proforma oluşturuldu (No: ' + proformaNo + ').';
 }
 
 init();
