@@ -13,7 +13,7 @@
     --ink:#152524;
     --ink-muted:#5D716D;
     --teal:#115BA4;
-    --teal-dark:#0C4178;
+    --teal-dark:#0C4178;a
     --teal-soft:#E4ECF6;
     --amber:#B8791F;
     --amber-soft:#FBF0DC;
@@ -308,8 +308,15 @@
 
       <div class="card">
         <h2>Hizmet Ekle</h2>
-        <input type="text" id="pfServiceSearch" placeholder="Hizmet ara (örn. TSH, MR, Muayene...)" oninput="renderServiceResults()">
-        <div id="pfServiceResults" style="margin-top:10px;max-height:260px;overflow-y:auto;"></div>
+        <label>Kategori</label>
+        <select id="pfCategorySelect" onchange="populateServiceSelect()">
+          <option value="">— Kategori seçin —</option>
+        </select>
+        <label>Hizmet</label>
+        <select id="pfServiceSelect" disabled>
+          <option value="">— Önce kategori seçin —</option>
+        </select>
+        <button class="btn btn-primary" onclick="addSelectedToCart()">Sepete Ekle</button>
       </div>
 
       <div class="card">
@@ -769,28 +776,39 @@ const PF_BANK = {
 async function loadServices(){
   const {data, error} = await db.from('services').select('*').order('category').order('name_tr');
   services = error ? [] : data;
-  renderServiceResults();
+  populateCategorySelect();
 }
 
 function fmtMoney(n){
   return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' TL';
 }
 
-function renderServiceResults(){
-  const q = document.getElementById('pfServiceSearch').value.trim().toLowerCase();
-  const box = document.getElementById('pfServiceResults');
-  if(!q){ box.innerHTML = '<div class="empty">Aramak için yazmaya başlayın.</div>'; return; }
-  const matches = services.filter(s => s.name_tr.toLowerCase().includes(q) || s.name_en.toLowerCase().includes(q) || (s.sut_code||'').includes(q)).slice(0,30);
-  if(matches.length===0){ box.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>'; return; }
-  box.innerHTML = matches.map(s => `
-    <div class="appt-row" style="padding:9px 0;">
-      <div class="appt-main">
-        <div class="name" style="font-size:13.5px;">${esc(s.name_tr)}</div>
-        <div class="meta">${esc(s.category)}${s.sut_code?' · SUT: '+esc(s.sut_code):''} · <b>${fmtMoney(s.price)}</b></div>
-      </div>
-      <button class="btn btn-small btn-ghost" onclick="addToCart('${s.id}')">Ekle</button>
-    </div>
-  `).join('');
+function populateCategorySelect(){
+  const sel = document.getElementById('pfCategorySelect');
+  const categories = [...new Set(services.map(s=>s.category))];
+  sel.innerHTML = '<option value="">— Kategori seçin —</option>' +
+    categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+
+function populateServiceSelect(){
+  const cat = document.getElementById('pfCategorySelect').value;
+  const sel = document.getElementById('pfServiceSelect');
+  if(!cat){
+    sel.innerHTML = '<option value="">— Önce kategori seçin —</option>';
+    sel.disabled = true;
+    return;
+  }
+  const items = services.filter(s=>s.category===cat);
+  sel.innerHTML = '<option value="">— Hizmet seçin —</option>' +
+    items.map(s=>`<option value="${s.id}">${esc(s.name_tr)} — ${fmtMoney(s.price)}</option>`).join('');
+  sel.disabled = false;
+}
+
+function addSelectedToCart(){
+  const serviceId = document.getElementById('pfServiceSelect').value;
+  if(!serviceId) return;
+  addToCart(serviceId);
+  document.getElementById('pfServiceSelect').value = '';
 }
 
 function addToCart(serviceId){
