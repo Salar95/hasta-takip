@@ -191,6 +191,7 @@
     <nav class="tabs">
       <button id="tabBtnAppt" class="active" onclick="switchTab('appt')">Randevular</button>
       <button id="tabBtnPat" onclick="switchTab('pat')">Yatan Hastalar</button>
+      <button id="tabBtnProf" onclick="switchTab('prof')">Proforma</button>
     </nav>
   </header>
 
@@ -269,6 +270,59 @@
         <div id="patientListDischarged"></div>
       </details>
     </section>
+
+    <!-- PROFORMA PANEL -->
+    <section id="panelProf" class="panel">
+      <div class="card">
+        <h2>Hasta Bilgileri</h2>
+        <div class="row2">
+          <div>
+            <label>Hasta Adı *</label>
+            <input type="text" id="pfName" placeholder="Adı">
+          </div>
+          <div>
+            <label>Hasta Soyadı *</label>
+            <input type="text" id="pfSurname" placeholder="Soyadı">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Dosya/Protokol No</label>
+            <input type="text" id="pfFileNo" placeholder="Örn. 315 / 6252875">
+          </div>
+          <div>
+            <label>Bölüm</label>
+            <input type="text" id="pfDept" placeholder="Örn. Nöroloji">
+          </div>
+        </div>
+        <label>Doktor Adı</label>
+        <input type="text" id="pfDoctor" placeholder="Dr. ...">
+        <label>Proforma Dili</label>
+        <select id="pfLang">
+          <option value="tr">Türkçe</option>
+          <option value="en">English</option>
+          <option value="ar">العربية (Arapça)</option>
+          <option value="ka">ქართული (Gürcüce)</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <h2>Hizmet Ekle</h2>
+        <input type="text" id="pfServiceSearch" placeholder="Hizmet ara (örn. TSH, MR, Muayene...)" oninput="renderServiceResults()">
+        <div id="pfServiceResults" style="margin-top:10px;max-height:260px;overflow-y:auto;"></div>
+      </div>
+
+      <div class="card">
+        <h2>Seçilen Hizmetler</h2>
+        <div id="pfCart"><div class="empty">Henüz hizmet eklenmedi.</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+          <span style="font-weight:700;font-size:14px;">Genel Toplam</span>
+          <span style="font-weight:700;font-size:18px;color:var(--teal-dark);font-family:var(--mono);" id="pfTotal">0,00 TL</span>
+        </div>
+        <button class="btn btn-primary" onclick="generateProforma()">Proforma Oluştur ve Yazdır</button>
+        <div class="status-msg" id="pfStatus"></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -316,6 +370,8 @@ let patients = [];
 let todaysVisitPatientIds = new Set();
 let currentDetailId = null;
 let currentNotes = [];
+let services = [];
+let cart = [];
 
 function todayISO(){
   const d = new Date();
@@ -337,8 +393,11 @@ function esc(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','
 function switchTab(tab){
   document.getElementById('tabBtnAppt').classList.toggle('active', tab==='appt');
   document.getElementById('tabBtnPat').classList.toggle('active', tab==='pat');
+  document.getElementById('tabBtnProf').classList.toggle('active', tab==='prof');
   document.getElementById('panelAppt').classList.toggle('active', tab==='appt');
   document.getElementById('panelPat').classList.toggle('active', tab==='pat');
+  document.getElementById('panelProf').classList.toggle('active', tab==='prof');
+  if(tab==='prof' && services.length===0){ loadServices(); }
 }
 
 /* ---------- INIT / AUTH ---------- */
@@ -669,6 +728,238 @@ function renderNotes(){
       <div class="note-text">${esc(n.note_text)}</div>
     </div>
   `).join('');
+}
+
+/* ================= PROFORMA ================= */
+
+const PF_LABELS = {
+  tr: { title:'PROFORMA FATURA', patientName:'Hasta Adı', patientSurname:'Hasta Soyadı', fileNo:'Dosya/Protokol No', dept:'Bölüm Adı', doctor:'Doktor Adı',
+        col_no:'#', col_sut:'SUT Kodu', col_service:'Mal Hizmet', col_price:'Ücreti', serviceTotal:'Hizmet Toplamı', amountDue:'Ödenecek Tutar',
+        validity:'Bu proformanın geçerlilik süresi 15 gündür. Proforma dışı yapılan her tahlil ve tetkik ayrıca ücretlendirilecektir.',
+        bankInfo:'BANKA HESAP BİLGİLERİ', accHolder:'HESAP SAHİBİ ADI', bankName:'BANKA ADI', branch:'ŞUBE ADI - NO', iban:'HESAP/IBAN NO',
+        taxNo:'Vergi No', taxOffice:'Vergi Dairesi', tradeReg:'Ticaret Sicil No', mersis:'Mersis No', tel:'Tel', fax:'Fax', email:'E-mail', website:'İnternet Sitesi', date:'Tarih' },
+  en: { title:'PROFORMA INVOICE', patientName:'Patient Name', patientSurname:'Patient Surname', fileNo:'File/Protocol No', dept:'Department', doctor:'Doctor',
+        col_no:'#', col_sut:'SUT Code', col_service:'Service', col_price:'Price', serviceTotal:'Service Total', amountDue:'Amount Due',
+        validity:'This proforma is valid for 15 days. Any test or examination performed outside this proforma will be charged separately.',
+        bankInfo:'BANK ACCOUNT DETAILS', accHolder:'ACCOUNT HOLDER', bankName:'BANK NAME', branch:'BRANCH', iban:'ACCOUNT/IBAN NO',
+        taxNo:'Tax No', taxOffice:'Tax Office', tradeReg:'Trade Registry No', mersis:'Mersis No', tel:'Tel', fax:'Fax', email:'Email', website:'Website', date:'Date' },
+  ar: { title:'فاتورة أولية', patientName:'اسم المريض', patientSurname:'اللقب', fileNo:'رقم الملف/البروتوكول', dept:'القسم', doctor:'الطبيب',
+        col_no:'#', col_sut:'رمز SUT', col_service:'الخدمة', col_price:'السعر', serviceTotal:'إجمالي الخدمة', amountDue:'المبلغ المستحق',
+        validity:'هذه الفاتورة الأولية صالحة لمدة 15 يومًا. أي فحص أو تحليل يتم إجراؤه خارج هذه الفاتورة سيتم احتسابه بشكل منفصل.',
+        bankInfo:'معلومات الحساب المصرفي', accHolder:'اسم صاحب الحساب', bankName:'اسم البنك', branch:'اسم/رقم الفرع', iban:'رقم الحساب/الآيبان',
+        taxNo:'الرقم الضريبي', taxOffice:'مكتب الضرائب', tradeReg:'رقم السجل التجاري', mersis:'رقم Mersis', tel:'هاتف', fax:'فاكس', email:'البريد الإلكتروني', website:'الموقع الإلكتروني', date:'التاريخ' },
+  ka: { title:'პროფორმა ინვოისი', patientName:'პაციენტის სახელი', patientSurname:'გვარი', fileNo:'ფაილის/ოქმის ნომერი', dept:'დეპარტამენტი', doctor:'ექიმი',
+        col_no:'#', col_sut:'SUT კოდი', col_service:'მომსახურება', col_price:'ფასი', serviceTotal:'მომსახურების ჯამი', amountDue:'გადასახდელი თანხა',
+        validity:'ეს პროფორმა ინვოისი მოქმედია 15 დღის განმავლობაში. ამ პროფორმის ფარგლებს გარეთ ჩატარებული ნებისმიერი ტესტი ან გამოკვლევა ცალკე დაერიცხება.',
+        bankInfo:'საბანკო ანგარიშის დეტალები', accHolder:'ანგარიშის მფლობელი', bankName:'ბანკის სახელი', branch:'ფილიალი', iban:'ანგარიშის/IBAN ნომერი',
+        taxNo:'საგადასახადო ნომერი', taxOffice:'საგადასახადო ოფისი', tradeReg:'სავაჭრო რეესტრის ნომერი', mersis:'Mersis ნომერი', tel:'ტელ', fax:'ფაქსი', email:'ელ-ფოსტა', website:'ვებგვერდი', date:'თარიღი' }
+};
+
+const PF_COMPANY = {
+  name: 'ANADOLU ÖZEL SAĞLIK HİZMETLERİ OTOMOTİV TURİZM VE TİCARET A. Ş.',
+  address: 'Kemerkaya Mahallesi Devlet Sahil Yolu İller Sokak No:27-29 Ortahisar/TRABZON',
+  taxNo: '0680644764', taxOffice: 'KARADENİZ', tradeReg: '13545', mersis: '0-068064476400016',
+  tel: '+90 462 444 44 61', fax: '+90 462 326 36 30', email: 'info@imperialhastanesi.com', website: 'www.imperialhastanesi.com'
+};
+const PF_BANK = {
+  accHolder: 'ANADOLU ÖZEL SAĞLIK HİZMETLERİ OTO. TUR. VE TİC. A. Ş.',
+  bankName: 'AKBANK', branch: 'TRABZON ŞUBESİ (0100)', iban: 'TR68 0004 6001 0000 1000 0003 09'
+};
+
+async function loadServices(){
+  const {data, error} = await db.from('services').select('*').order('category').order('name_tr');
+  services = error ? [] : data;
+  renderServiceResults();
+}
+
+function fmtMoney(n){
+  return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' TL';
+}
+
+function renderServiceResults(){
+  const q = document.getElementById('pfServiceSearch').value.trim().toLowerCase();
+  const box = document.getElementById('pfServiceResults');
+  if(!q){ box.innerHTML = '<div class="empty">Aramak için yazmaya başlayın.</div>'; return; }
+  const matches = services.filter(s => s.name_tr.toLowerCase().includes(q) || s.name_en.toLowerCase().includes(q) || (s.sut_code||'').includes(q)).slice(0,30);
+  if(matches.length===0){ box.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>'; return; }
+  box.innerHTML = matches.map(s => `
+    <div class="appt-row" style="padding:9px 0;">
+      <div class="appt-main">
+        <div class="name" style="font-size:13.5px;">${esc(s.name_tr)}</div>
+        <div class="meta">${esc(s.category)}${s.sut_code?' · SUT: '+esc(s.sut_code):''} · <b>${fmtMoney(s.price)}</b></div>
+      </div>
+      <button class="btn btn-small btn-ghost" onclick="addToCart('${s.id}')">Ekle</button>
+    </div>
+  `).join('');
+}
+
+function addToCart(serviceId){
+  const s = services.find(x=>x.id===serviceId);
+  if(!s) return;
+  const existing = cart.find(c=>c.id===serviceId);
+  if(existing){ existing.qty += 1; }
+  else{ cart.push({id:s.id, name_tr:s.name_tr, name_en:s.name_en, sut_code:s.sut_code, price:s.price, qty:1}); }
+  renderCart();
+}
+
+function removeFromCart(serviceId){
+  cart = cart.filter(c=>c.id!==serviceId);
+  renderCart();
+}
+
+function setQty(serviceId, qty){
+  qty = parseInt(qty,10);
+  const item = cart.find(c=>c.id===serviceId);
+  if(!item) return;
+  if(!qty || qty<1) qty = 1;
+  item.qty = qty;
+  renderCart();
+}
+
+function renderCart(){
+  const box = document.getElementById('pfCart');
+  if(cart.length===0){
+    box.innerHTML = '<div class="empty">Henüz hizmet eklenmedi.</div>';
+    document.getElementById('pfTotal').textContent = fmtMoney(0);
+    return;
+  }
+  box.innerHTML = cart.map(c => `
+    <div class="appt-row" style="padding:9px 0;">
+      <div class="appt-main">
+        <div class="name" style="font-size:13.5px;">${esc(c.name_tr)}</div>
+        <div class="meta">${fmtMoney(c.price)} × <input type="text" value="${c.qty}" onchange="setQty('${c.id}', this.value)" style="width:40px;display:inline-block;padding:3px 6px;text-align:center;"> = <b>${fmtMoney(c.price*c.qty)}</b></div>
+      </div>
+      <button class="btn-danger-text" onclick="removeFromCart('${c.id}')">Sil</button>
+    </div>
+  `).join('');
+  const total = cart.reduce((sum,c)=>sum + c.price*c.qty, 0);
+  document.getElementById('pfTotal').textContent = fmtMoney(total);
+}
+
+function fmtDateSlash(){
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+
+async function generateProforma(){
+  const statusEl = document.getElementById('pfStatus');
+  const name = document.getElementById('pfName').value.trim();
+  const surname = document.getElementById('pfSurname').value.trim();
+  const fileNo = document.getElementById('pfFileNo').value.trim();
+  const dept = document.getElementById('pfDept').value.trim();
+  const doctor = document.getElementById('pfDoctor').value.trim();
+  const lang = document.getElementById('pfLang').value;
+
+  if(!name || !surname){
+    statusEl.textContent = 'Hasta adı ve soyadı gerekli.';
+    statusEl.classList.add('err');
+    return;
+  }
+  if(cart.length===0){
+    statusEl.textContent = 'En az bir hizmet ekleyin.';
+    statusEl.classList.add('err');
+    return;
+  }
+  statusEl.classList.remove('err');
+  statusEl.textContent = '';
+
+  const L = PF_LABELS[lang];
+  const isRtl = lang === 'ar';
+  const total = cart.reduce((sum,c)=>sum + c.price*c.qty, 0);
+  const logoSrc = document.querySelector('.logo-corner img') ? document.querySelector('.logo-corner img').src : '';
+
+  const rows = cart.map((c,i) => `
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${esc(c.sut_code||'')}</td>
+      <td>${esc(lang==='tr' ? c.name_tr : c.name_en)}</td>
+      <td style="text-align:right;">${fmtMoney(c.price*c.qty)}</td>
+    </tr>
+  `).join('');
+
+  const printHtml = `<!DOCTYPE html>
+<html lang="${lang}" dir="${isRtl?'rtl':'ltr'}">
+<head>
+<meta charset="UTF-8">
+<title>${L.title} — ${esc(name)} ${esc(surname)}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;margin:24px;}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border:2px solid #0C4178;padding:10px;}
+  .head img{height:50px;}
+  .title{font-size:16px;font-weight:bold;color:#0C4178;text-align:center;}
+  .company-box{font-size:10.5px;line-height:1.5;text-align:${isRtl?'left':'right'};}
+  .info-box{border:1px solid #0C4178;padding:10px;margin-top:14px;font-size:12px;}
+  .info-box div{margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:11.5px;}
+  th{background:#0C4178;color:#fff;padding:6px 8px;text-align:${isRtl?'right':'left'};}
+  td{border:1px solid #ccc;padding:6px 8px;}
+  .totals{margin-top:10px;text-align:${isRtl?'left':'right'};font-size:13px;}
+  .totals div{margin-bottom:4px;}
+  .validity{margin-top:16px;font-size:10.5px;color:#444;}
+  .bank{margin-top:16px;border:1px solid #0C4178;padding:10px;font-size:11px;}
+  .bank div{margin-bottom:3px;}
+  @media print{ body{margin:10mm;} }
+</style>
+</head>
+<body>
+  <div class="head">
+    <img src="${logoSrc}" alt="logo">
+    <div class="title">${L.title}<br><span style="font-size:11px;font-weight:normal;">${L.date}: ${fmtDateSlash()}</span></div>
+    <div class="company-box">
+      <b>${PF_COMPANY.name}</b><br>${PF_COMPANY.address}<br>
+      ${L.taxNo}: ${PF_COMPANY.taxNo} &nbsp; ${L.taxOffice}: ${PF_COMPANY.taxOffice}<br>
+      ${L.tradeReg}: ${PF_COMPANY.tradeReg} &nbsp; ${L.mersis}: ${PF_COMPANY.mersis}<br>
+      ${L.tel}: ${PF_COMPANY.tel} &nbsp; ${L.fax}: ${PF_COMPANY.fax}<br>
+      ${L.email}: ${PF_COMPANY.email} &nbsp; ${L.website}: ${PF_COMPANY.website}
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div><b>${L.patientName}:</b> ${esc(name)}</div>
+    <div><b>${L.patientSurname}:</b> ${esc(surname)}</div>
+    <div><b>${L.fileNo}:</b> ${esc(fileNo)}</div>
+    <div><b>${L.dept}:</b> ${esc(dept)}</div>
+    <div><b>${L.doctor}:</b> ${esc(doctor)}</div>
+  </div>
+
+  <table>
+    <thead><tr><th>${L.col_no}</th><th>${L.col_sut}</th><th>${L.col_service}</th><th style="text-align:right;">${L.col_price}</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div>${L.serviceTotal}: <b>${fmtMoney(total)}</b></div>
+    <div>${L.amountDue}: <b>${fmtMoney(total)}</b></div>
+  </div>
+
+  <div class="validity">${L.validity}</div>
+
+  <div class="bank">
+    <b>${L.bankInfo}</b><br>
+    <div>${L.accHolder}: ${PF_BANK.accHolder}</div>
+    <div>${L.bankName}: ${PF_BANK.bankName}</div>
+    <div>${L.branch}: ${PF_BANK.branch}</div>
+    <div>${L.iban}: ${PF_BANK.iban}</div>
+  </div>
+
+  <script>
+    window.onload = function(){ setTimeout(function(){ window.print(); }, 300); };
+  </` + `script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(printHtml);
+  win.document.close();
+
+  // Log this proforma
+  await db.from('proformas').insert({
+    patient_name: name, patient_surname: surname, file_no: fileNo || null,
+    department: dept || null, doctor: doctor || null, language: lang,
+    items: cart, total: total
+  });
+
+  statusEl.textContent = 'Proforma oluşturuldu.';
 }
 
 init();
