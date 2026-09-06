@@ -192,6 +192,9 @@
       <button id="tabBtnAppt" class="active" onclick="switchTab('appt')">Randevular</button>
       <button id="tabBtnPat" onclick="switchTab('pat')">Yatan Hastalar</button>
       <button id="tabBtnProf" onclick="switchTab('prof')">Proforma</button>
+      <button id="tabBtnTalepler" onclick="switchTab('talepler')" style="display:none;">Talepler</button>
+      <button id="tabBtnRandevuTalebi" onclick="switchTab('randevu_talebi')" style="display:none;">Randevu Talebi</button>
+      <button id="tabBtnProformaTalebi" onclick="switchTab('proforma_talebi')" style="display:none;">Proforma Talebi</button>
     </nav>
   </header>
 
@@ -209,11 +212,15 @@
           </div>
           <div>
             <label>Bölüm *</label>
-            <input type="text" id="aDept" placeholder="Örn. Kardiyoloji">
+            <select id="aDept" onchange="populateDoctorSelect('aDept','aDoctor')">
+              <option value="">— Bölüm seçin —</option>
+            </select>
           </div>
         </div>
         <label>Doktor Adı *</label>
-        <input type="text" id="aDoctor" placeholder="Dr. ...">
+        <select id="aDoctor" disabled>
+          <option value="">— Önce bölüm seçin —</option>
+        </select>
         <div class="row2">
           <div>
             <label>Tarih *</label>
@@ -302,11 +309,15 @@
           </div>
           <div>
             <label>Bölüm</label>
-            <input type="text" id="pfDept" placeholder="Örn. Nöroloji">
+            <select id="pfDept" onchange="populateDoctorSelect('pfDept','pfDoctor')">
+              <option value="">— Bölüm seçin —</option>
+            </select>
           </div>
         </div>
         <label>Doktor Adı</label>
-        <input type="text" id="pfDoctor" placeholder="Dr. ...">
+        <select id="pfDoctor" disabled>
+          <option value="">— Önce bölüm seçin —</option>
+        </select>
         <label>Proforma Dili</label>
         <select id="pfLang">
           <option value="tr">Türkçe</option>
@@ -338,6 +349,96 @@
         </div>
         <button class="btn btn-primary" onclick="generateProforma()">Proforma Oluştur ve Yazdır</button>
         <div class="status-msg" id="pfStatus"></div>
+      </div>
+    </section>
+
+    <!-- STAFF: TALEPLER (requests from agents) -->
+    <section id="panelTalepler" class="panel">
+      <div class="card">
+        <h2>Randevu Talepleri</h2>
+        <div id="apptRequestsList"><div class="empty">Yükleniyor…</div></div>
+      </div>
+      <div class="card">
+        <h2>Proforma Talepleri</h2>
+        <div id="pfRequestsList"><div class="empty">Yükleniyor…</div></div>
+      </div>
+    </section>
+
+    <!-- AGENT: RANDEVU TALEBİ -->
+    <section id="panelRandevuTalebi" class="panel">
+      <div class="card">
+        <h2>Randevu Talebi Oluştur</h2>
+        <label>Hasta Adı Soyadı *</label>
+        <input type="text" id="rtName" placeholder="Hasta adı soyadı">
+        <label>ID (Kimlik/Pasaport No)</label>
+        <input type="text" id="rtPatientId" placeholder="Kimlik veya pasaport no">
+        <label class="visit-check" style="margin:10px 0;">
+          <input type="checkbox" id="rtVisitedBefore">
+          <span>Hasta daha önce hastanemize geldi mi?</span>
+        </label>
+        <div class="row2">
+          <div>
+            <label>Bölüm *</label>
+            <select id="rtDept" onchange="populateDoctorSelect('rtDept','rtDoctor')">
+              <option value="">— Bölüm seçin —</option>
+            </select>
+          </div>
+          <div>
+            <label>Doktor *</label>
+            <select id="rtDoctor" disabled>
+              <option value="">— Önce bölüm seçin —</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Tarih *</label>
+            <input type="date" id="rtDate">
+          </div>
+          <div>
+            <label>Saat *</label>
+            <input type="time" id="rtHour">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="submitAppointmentRequest()">Talep Gönder</button>
+        <div class="status-msg" id="rtStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Gönderdiğim Randevu Talepleri</h2>
+        <div id="myApptRequestsList"><div class="empty">Yükleniyor…</div></div>
+      </div>
+    </section>
+
+    <!-- AGENT: PROFORMA TALEBİ -->
+    <section id="panelProformaTalebi" class="panel">
+      <div class="card">
+        <h2>Proforma Talebi Oluştur</h2>
+        <label>Hasta Adı Soyadı *</label>
+        <input type="text" id="ptName" placeholder="Hasta adı soyadı">
+        <div class="row2">
+          <div>
+            <label>Bölüm *</label>
+            <select id="ptDept" onchange="populateDoctorSelect('ptDept','ptDoctor')">
+              <option value="">— Bölüm seçin —</option>
+            </select>
+          </div>
+          <div>
+            <label>Doktor *</label>
+            <select id="ptDoctor" disabled>
+              <option value="">— Önce bölüm seçin —</option>
+            </select>
+          </div>
+        </div>
+        <label>Hastanın Anamnezi *</label>
+        <textarea id="ptAnamnezi" placeholder="Hastanın şikayeti, tıbbi geçmişi, talep edilen tetkikler..." style="min-height:120px;"></textarea>
+        <button class="btn btn-primary" onclick="submitProformaRequest()">Talep Gönder</button>
+        <div class="status-msg" id="ptStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Gönderdiğim Proforma Talepleri</h2>
+        <div id="myPfRequestsList"><div class="empty">Yükleniyor…</div></div>
       </div>
     </section>
   </main>
@@ -389,6 +490,9 @@ let currentDetailId = null;
 let currentNotes = [];
 let services = [];
 let cart = [];
+let doctors = [];
+let userRole = 'staff';
+let currentUserId = null;
 
 function todayISO(){
   const d = new Date();
@@ -408,13 +512,17 @@ function fmtTimeTR(iso){
 function esc(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function switchTab(tab){
-  document.getElementById('tabBtnAppt').classList.toggle('active', tab==='appt');
-  document.getElementById('tabBtnPat').classList.toggle('active', tab==='pat');
-  document.getElementById('tabBtnProf').classList.toggle('active', tab==='prof');
-  document.getElementById('panelAppt').classList.toggle('active', tab==='appt');
-  document.getElementById('panelPat').classList.toggle('active', tab==='pat');
-  document.getElementById('panelProf').classList.toggle('active', tab==='prof');
+  const tabs = ['appt','pat','prof','talepler','randevu_talebi','proforma_talebi'];
+  const btnIds = {appt:'tabBtnAppt', pat:'tabBtnPat', prof:'tabBtnProf', talepler:'tabBtnTalepler', randevu_talebi:'tabBtnRandevuTalebi', proforma_talebi:'tabBtnProformaTalebi'};
+  const panelIds = {appt:'panelAppt', pat:'panelPat', prof:'panelProf', talepler:'panelTalepler', randevu_talebi:'panelRandevuTalebi', proforma_talebi:'panelProformaTalebi'};
+  tabs.forEach(t=>{
+    document.getElementById(btnIds[t]).classList.toggle('active', t===tab);
+    document.getElementById(panelIds[t]).classList.toggle('active', t===tab);
+  });
   if(tab==='prof' && services.length===0){ loadServices(); }
+  if(tab==='talepler'){ loadApptRequests(); loadPfRequests(); }
+  if(tab==='randevu_talebi'){ loadMyApptRequests(); }
+  if(tab==='proforma_talebi'){ loadMyPfRequests(); }
 }
 
 /* ---------- INIT / AUTH ---------- */
@@ -463,6 +571,40 @@ async function doLogout(){
 async function startApp(){
   document.getElementById('mainApp').style.display='block';
 
+  const {data:{session}} = await db.auth.getSession();
+  currentUserId = session.user.id;
+
+  // Determine role. Default to 'staff' if no profile row exists (e.g. accounts created before roles existed).
+  try{
+    const {data: profile} = await db.from('profiles').select('role').eq('id', currentUserId).single();
+    userRole = (profile && profile.role) ? profile.role : 'staff';
+  }catch(e){
+    userRole = 'staff';
+  }
+
+  await loadDoctors();
+
+  if(userRole === 'agent'){
+    document.getElementById('tabBtnAppt').style.display='none';
+    document.getElementById('tabBtnPat').style.display='none';
+    document.getElementById('tabBtnProf').style.display='none';
+    document.getElementById('tabBtnTalepler').style.display='none';
+    document.getElementById('tabBtnRandevuTalebi').style.display='inline-block';
+    document.getElementById('tabBtnProformaTalebi').style.display='inline-block';
+    populateDeptSelect('rtDept');
+    populateDeptSelect('ptDept');
+    document.getElementById('rtDate').value = todayISO();
+    switchTab('randevu_talebi');
+    db.channel('appt-req-changes').on('postgres_changes', {event:'*', schema:'public', table:'appointment_requests'}, loadMyApptRequests).subscribe();
+    db.channel('pf-req-changes').on('postgres_changes', {event:'*', schema:'public', table:'proforma_requests'}, loadMyPfRequests).subscribe();
+    return;
+  }
+
+  // Staff view
+  document.getElementById('tabBtnTalepler').style.display='inline-block';
+  populateDeptSelect('aDept');
+  populateDeptSelect('pfDept');
+
   const now = new Date();
   document.getElementById('todayLabel').textContent = `${TR_DAYS[now.getDay()]}, ${fmtDateTR(todayISO())}`;
   document.getElementById('aDate').value = todayISO();
@@ -476,6 +618,35 @@ async function startApp(){
   db.channel('patients-changes').on('postgres_changes', {event:'*', schema:'public', table:'patients'}, refreshPatients).subscribe();
   db.channel('visits-changes').on('postgres_changes', {event:'*', schema:'public', table:'patient_visits'}, refreshPatients).subscribe();
   db.channel('notes-changes').on('postgres_changes', {event:'*', schema:'public', table:'patient_notes'}, ()=>{ if(currentDetailId) loadNotes(currentDetailId); }).subscribe();
+  db.channel('appt-req-changes-staff').on('postgres_changes', {event:'*', schema:'public', table:'appointment_requests'}, ()=>{ if(document.getElementById('panelTalepler').classList.contains('active')) loadApptRequests(); }).subscribe();
+  db.channel('pf-req-changes-staff').on('postgres_changes', {event:'*', schema:'public', table:'proforma_requests'}, ()=>{ if(document.getElementById('panelTalepler').classList.contains('active')) loadPfRequests(); }).subscribe();
+}
+
+/* ---------- DOCTORS / BRANCHES ---------- */
+async function loadDoctors(){
+  const {data, error} = await db.from('doctors').select('*').order('branch').order('name');
+  doctors = error ? [] : data;
+}
+
+function populateDeptSelect(selectId){
+  const sel = document.getElementById(selectId);
+  const branches = [...new Set(doctors.map(d=>d.branch))].sort((a,b)=>a.localeCompare(b,'tr'));
+  sel.innerHTML = '<option value="">— Bölüm seçin —</option>' +
+    branches.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+}
+
+function populateDoctorSelect(deptSelectId, doctorSelectId){
+  const branch = document.getElementById(deptSelectId).value;
+  const sel = document.getElementById(doctorSelectId);
+  if(!branch){
+    sel.innerHTML = '<option value="">— Önce bölüm seçin —</option>';
+    sel.disabled = true;
+    return;
+  }
+  const items = doctors.filter(d=>d.branch===branch);
+  sel.innerHTML = '<option value="">— Doktor seçin —</option>' +
+    items.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+  sel.disabled = false;
 }
 
 async function refreshAppointments(){
@@ -1006,7 +1177,12 @@ function fmtMoney(n){
 
 function populateCategorySelect(){
   const sel = document.getElementById('pfCategorySelect');
-  const categories = [...new Set(services.map(s=>s.category))];
+  let categories = [...new Set(services.map(s=>s.category))];
+  categories.sort((a,b)=>{
+    if(a==='Muayene') return -1;
+    if(b==='Muayene') return 1;
+    return a.localeCompare(b, 'tr');
+  });
   sel.innerHTML = '<option value="">— Kategori seçin —</option>' +
     categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
 }
@@ -1264,6 +1440,162 @@ async function generateProforma(){
   });
 
   statusEl.textContent = 'Proforma oluşturuldu (No: ' + proformaNo + ').';
+}
+
+/* ================= AGENT: REQUEST SUBMISSION ================= */
+
+async function submitAppointmentRequest(){
+  const statusEl = document.getElementById('rtStatus');
+  const name = document.getElementById('rtName').value.trim();
+  const patientId = document.getElementById('rtPatientId').value.trim();
+  const visitedBefore = document.getElementById('rtVisitedBefore').checked;
+  const branch = document.getElementById('rtDept').value;
+  const doctor = document.getElementById('rtDoctor').value;
+  const date = document.getElementById('rtDate').value;
+  const hour = document.getElementById('rtHour').value;
+
+  if(!name || !branch || !doctor || !date || !hour){
+    statusEl.textContent = 'Lütfen zorunlu alanları doldurun.';
+    statusEl.classList.add('err');
+    return;
+  }
+  statusEl.classList.remove('err');
+  statusEl.textContent = 'Gönderiliyor…';
+
+  const {error} = await db.from('appointment_requests').insert({
+    patient_name: name, patient_id: patientId || null, visited_before: visitedBefore,
+    branch, doctor, requested_date: date, requested_hour: hour
+  });
+  if(error){
+    statusEl.textContent = 'Gönderilemedi: ' + error.message;
+    statusEl.classList.add('err');
+    return;
+  }
+  document.getElementById('rtName').value = '';
+  document.getElementById('rtPatientId').value = '';
+  document.getElementById('rtVisitedBefore').checked = false;
+  document.getElementById('rtDept').value = '';
+  populateDoctorSelect('rtDept','rtDoctor');
+  document.getElementById('rtHour').value = '';
+  statusEl.textContent = 'Talep gönderildi.';
+  loadMyApptRequests();
+  setTimeout(()=>{ if(statusEl.textContent==='Talep gönderildi.') statusEl.textContent=''; }, 2500);
+}
+
+async function loadMyApptRequests(){
+  const {data, error} = await db.from('appointment_requests').select('*').order('created_at', {ascending:false});
+  const list = document.getElementById('myApptRequestsList');
+  if(error || !data || data.length===0){ list.innerHTML = '<div class="empty">Henüz talep göndermediniz.</div>'; return; }
+  list.innerHTML = data.map(r=>`
+    <div class="appt-row">
+      <div class="appt-main">
+        <div class="name">${esc(r.patient_name)}</div>
+        <div class="meta"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')} · ${fmtDateTR(r.requested_date)} ${r.requested_hour?r.requested_hour.slice(0,5):''}</div>
+        <div class="meta">
+          ${r.isleme_alindi ? '<span class="chip chip-today">İşleme Alındı</span>' : '<span style="color:var(--ink-muted);">Bekliyor</span>'}
+          ${r.randevu_alindi_saat ? ' · Randevu Saati: <b>'+esc(r.randevu_alindi_saat)+'</b>' : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitProformaRequest(){
+  const statusEl = document.getElementById('ptStatus');
+  const name = document.getElementById('ptName').value.trim();
+  const branch = document.getElementById('ptDept').value;
+  const doctor = document.getElementById('ptDoctor').value;
+  const anamnezi = document.getElementById('ptAnamnezi').value.trim();
+
+  if(!name || !branch || !doctor || !anamnezi){
+    statusEl.textContent = 'Lütfen zorunlu alanları doldurun.';
+    statusEl.classList.add('err');
+    return;
+  }
+  statusEl.classList.remove('err');
+  statusEl.textContent = 'Gönderiliyor…';
+
+  const {error} = await db.from('proforma_requests').insert({
+    patient_name: name, branch, doctor, anamnezi
+  });
+  if(error){
+    statusEl.textContent = 'Gönderilemedi: ' + error.message;
+    statusEl.classList.add('err');
+    return;
+  }
+  document.getElementById('ptName').value = '';
+  document.getElementById('ptDept').value = '';
+  populateDoctorSelect('ptDept','ptDoctor');
+  document.getElementById('ptAnamnezi').value = '';
+  statusEl.textContent = 'Talep gönderildi.';
+  loadMyPfRequests();
+  setTimeout(()=>{ if(statusEl.textContent==='Talep gönderildi.') statusEl.textContent=''; }, 2500);
+}
+
+async function loadMyPfRequests(){
+  const {data, error} = await db.from('proforma_requests').select('*').order('created_at', {ascending:false});
+  const list = document.getElementById('myPfRequestsList');
+  if(error || !data || data.length===0){ list.innerHTML = '<div class="empty">Henüz talep göndermediniz.</div>'; return; }
+  list.innerHTML = data.map(r=>`
+    <div class="appt-row">
+      <div class="appt-main">
+        <div class="name">${esc(r.patient_name)}</div>
+        <div class="meta"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')}</div>
+        <div class="meta">${esc(r.anamnezi||'')}</div>
+        <div class="meta">${r.proforma_gonderildi ? '<span class="chip chip-today">Proforma Gönderildi</span>' : '<span style="color:var(--ink-muted);">Bekliyor</span>'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================= STAFF: MANAGE REQUESTS ================= */
+
+async function loadApptRequests(){
+  const {data, error} = await db.from('appointment_requests').select('*').order('created_at', {ascending:false});
+  const list = document.getElementById('apptRequestsList');
+  if(error || !data || data.length===0){ list.innerHTML = '<div class="empty">Randevu talebi yok.</div>'; return; }
+  list.innerHTML = data.map(r=>`
+    <div class="card" style="margin-bottom:10px;">
+      <div class="patient-name">${esc(r.patient_name)}</div>
+      <div class="patient-meta">${r.patient_id ? 'ID: '+esc(r.patient_id)+' · ' : ''}${r.visited_before ? 'Daha önce geldi' : 'İlk kez geliyor'}</div>
+      <div class="meta" style="margin:6px 0;"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')} · ${fmtDateTR(r.requested_date)} ${r.requested_hour?r.requested_hour.slice(0,5):''}</div>
+      <label class="visit-check" style="margin:8px 0;">
+        <input type="checkbox" ${r.isleme_alindi?'checked':''} onchange="toggleRequestField('appointment_requests','${r.id}','isleme_alindi',this.checked, loadApptRequests)">
+        <span>İşleme Alındı</span>
+      </label>
+      <label>Randevu Alındı Saat:</label>
+      <input type="text" value="${esc(r.randevu_alindi_saat||'')}" placeholder="Örn. 14:30" onchange="updateRequestText('appointment_requests','${r.id}','randevu_alindi_saat',this.value, loadApptRequests)">
+    </div>
+  `).join('');
+}
+
+async function loadPfRequests(){
+  const {data, error} = await db.from('proforma_requests').select('*').order('created_at', {ascending:false});
+  const list = document.getElementById('pfRequestsList');
+  if(error || !data || data.length===0){ list.innerHTML = '<div class="empty">Proforma talebi yok.</div>'; return; }
+  list.innerHTML = data.map(r=>`
+    <div class="card" style="margin-bottom:10px;">
+      <div class="patient-name">${esc(r.patient_name)}</div>
+      <div class="meta" style="margin:6px 0;"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')}</div>
+      <div class="meta" style="margin-bottom:8px;">${esc(r.anamnezi||'')}</div>
+      <label class="visit-check">
+        <input type="checkbox" ${r.proforma_gonderildi?'checked':''} onchange="toggleRequestField('proforma_requests','${r.id}','proforma_gonderildi',this.checked, loadPfRequests)">
+        <span>Proforma Gönderildi</span>
+      </label>
+    </div>
+  `).join('');
+}
+
+async function toggleRequestField(table, id, field, value, reload){
+  const patch = {}; patch[field] = value;
+  await db.from(table).update(patch).eq('id', id);
+  if(reload) reload();
+}
+
+async function updateRequestText(table, id, field, value, reload){
+  const patch = {}; patch[field] = value;
+  await db.from(table).update(patch).eq('id', id);
+  if(reload) reload();
 }
 
 init();
