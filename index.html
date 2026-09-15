@@ -1634,34 +1634,36 @@ async function submitProformaRequest(){
     return;
   }
   statusEl.classList.remove('err');
-  statusEl.textContent = 'Gönderiliyor…';
 
-  const {data: inserted, error} = await db.from('proforma_requests').insert({
-    patient_name: name, branch, doctor, anamnezi, agent_name: currentUserFullName || null
-  }).select().single();
-  if(error){
-    statusEl.textContent = 'Gönderilemedi: ' + error.message;
-    statusEl.classList.add('err');
-    return;
-  }
+  // Generate the ID upfront so files can be uploaded to their final path
+  // and included directly in the insert — agents aren't allowed to edit
+  // a request after creating it, so we can't upload-then-update.
+  const requestId = crypto.randomUUID();
+  let attachments = [];
 
-  // Upload any attached files, then link them to the request
   if(files && files.length > 0){
     statusEl.textContent = 'Dosyalar yükleniyor…';
-    const attachments = [];
     for(const file of files){
-      const path = `${currentUserId}/${inserted.id}/${file.name}`;
+      const path = `${currentUserId}/${requestId}/${file.name}`;
       const {error: uploadError} = await db.storage.from('proforma-attachments').upload(path, file, {upsert:true});
       if(uploadError){
         statusEl.textContent = `"${file.name}" yüklenemedi: ${uploadError.message}`;
         statusEl.classList.add('err');
-        continue;
+        return;
       }
       attachments.push({name: file.name, path});
     }
-    if(attachments.length > 0){
-      await db.from('proforma_requests').update({attachments}).eq('id', inserted.id);
-    }
+  }
+
+  statusEl.textContent = 'Gönderiliyor…';
+  const {error} = await db.from('proforma_requests').insert({
+    id: requestId, patient_name: name, branch, doctor, anamnezi,
+    agent_name: currentUserFullName || null, attachments
+  });
+  if(error){
+    statusEl.textContent = 'Gönderilemedi: ' + error.message;
+    statusEl.classList.add('err');
+    return;
   }
 
   document.getElementById('ptName').value = '';
