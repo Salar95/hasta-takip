@@ -444,6 +444,9 @@
         </div>
         <label>Hastanın Anamnezi *</label>
         <textarea id="ptAnamnezi" placeholder="Hastanın şikayeti, tıbbi geçmişi, talep edilen tetkikler..." style="min-height:120px;"></textarea>
+        <label>Tıbbi Rapor / Görüntü Ekle (PDF, JPG, PNG — opsiyonel, en fazla 20MB/dosya)</label>
+        <input type="file" id="ptFiles" multiple accept="application/pdf,image/jpeg,image/png,image/heic,image/webp">
+        <div id="ptFilesList" style="font-size:12.5px;color:var(--ink-muted);margin-top:6px;"></div>
         <button class="btn btn-primary" onclick="submitProformaRequest()">Talep Gönder</button>
         <div class="status-msg" id="ptStatus"></div>
       </div>
@@ -1623,6 +1626,7 @@ async function submitProformaRequest(){
   const branch = document.getElementById('ptDept').value;
   const doctor = document.getElementById('ptDoctor').value;
   const anamnezi = document.getElementById('ptAnamnezi').value.trim();
+  const files = document.getElementById('ptFiles').files;
 
   if(!name || !branch || !doctor || !anamnezi){
     statusEl.textContent = 'Lütfen zorunlu alanları doldurun.';
@@ -1632,22 +1636,56 @@ async function submitProformaRequest(){
   statusEl.classList.remove('err');
   statusEl.textContent = 'Gönderiliyor…';
 
-  const {error} = await db.from('proforma_requests').insert({
+  const {data: inserted, error} = await db.from('proforma_requests').insert({
     patient_name: name, branch, doctor, anamnezi, agent_name: currentUserFullName || null
-  });
+  }).select().single();
   if(error){
     statusEl.textContent = 'Gönderilemedi: ' + error.message;
     statusEl.classList.add('err');
     return;
   }
+
+  // Upload any attached files, then link them to the request
+  if(files && files.length > 0){
+    statusEl.textContent = 'Dosyalar yükleniyor…';
+    const attachments = [];
+    for(const file of files){
+      const path = `${currentUserId}/${inserted.id}/${file.name}`;
+      const {error: uploadError} = await db.storage.from('proforma-attachments').upload(path, file, {upsert:true});
+      if(uploadError){
+        statusEl.textContent = `"${file.name}" yüklenemedi: ${uploadError.message}`;
+        statusEl.classList.add('err');
+        continue;
+      }
+      attachments.push({name: file.name, path});
+    }
+    if(attachments.length > 0){
+      await db.from('proforma_requests').update({attachments}).eq('id', inserted.id);
+    }
+  }
+
   document.getElementById('ptName').value = '';
   document.getElementById('ptDept').value = '';
   populateDoctorSelect('ptDept','ptDoctor');
   document.getElementById('ptAnamnezi').value = '';
-  statusEl.textContent = 'Talep gönderildi.';
+  document.getElementById('ptFiles').value = '';
+  document.getElementById('ptFilesList').textContent = '';
+  if(!statusEl.classList.contains('err')){
+    statusEl.textContent = 'Talep gönderildi.';
+  }
   loadMyPfRequests();
   setTimeout(()=>{ if(statusEl.textContent==='Talep gönderildi.') statusEl.textContent=''; }, 2500);
 }
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const filesInput = document.getElementById('ptFiles');
+  if(filesInput){
+    filesInput.addEventListener('change', ()=>{
+      const names = Array.from(filesInput.files).map(f=>f.name);
+      document.getElementById('ptFilesList').textContent = names.length ? 'Seçilen dosyalar: ' + names.join(', ') : '';
+    });
+  }
+});
 
 async function loadMyPfRequests(){
   const {data, error} = await db.from('proforma_requests').select('*').order('created_at', {ascending:false});
@@ -1660,10 +1698,25 @@ async function loadMyPfRequests(){
         <div class="meta"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')}</div>
         <div class="meta">${esc(r.anamnezi||'')}</div>
         <div class="meta">${r.proforma_gonderildi ? '<span class="chip chip-today">Proforma Gönderildi</span>' : '<span style="color:var(--ink-muted);">Bekliyor</span>'}</div>
+        ${renderAttachmentLinks(r.attachments)}
         ${r.linked_proforma_id ? `<button class="btn btn-small btn-ghost" style="margin-top:6px;" onclick="viewSavedProforma('${r.linked_proforma_id}')">Proformayı Görüntüle</button>` : ''}
       </div>
     </div>
   `).join('');
+}
+
+function renderAttachmentLinks(attachments){
+  if(!attachments || attachments.length===0) return '';
+  return '<div style="margin-top:6px;">' + attachments.map(a=>
+    `<button class="btn btn-small btn-ghost" style="margin:2px 4px 2px 0;" onclick="openAttachment(this)" data-path="${esc(a.path)}">📎 ${esc(a.name)}</button>`
+  ).join('') + '</div>';
+}
+
+async function openAttachment(btn){
+  const path = btn.getAttribute('data-path');
+  const {data, error} = await db.storage.from('proforma-attachments').createSignedUrl(path, 3600);
+  if(error || !data){ alert('Dosya açılamadı.'); return; }
+  window.open(data.signedUrl, '_blank');
 }
 
 async function viewSavedProforma(proformaId){
@@ -1740,6 +1793,7 @@ async function loadPfRequests(){
       <div class="patient-meta">${r.agent_name ? 'Acente: '+esc(r.agent_name) : ''}</div>
       <div class="meta" style="margin:6px 0;"><b>${esc(r.branch||'')}</b> — ${esc(r.doctor||'')}</div>
       <div class="meta" style="margin-bottom:8px;">${esc(r.anamnezi||'')}</div>
+      ${renderAttachmentLinks(r.attachments)}
       <label class="visit-check">
         <input type="checkbox" ${r.proforma_gonderildi?'checked':''} onchange="toggleRequestField('proforma_requests','${r.id}','proforma_gonderildi',this.checked, loadPfRequests)">
         <span>Proforma Gönderildi</span>
