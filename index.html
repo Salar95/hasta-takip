@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hasta Takip Sistemi</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#F3F6F5;
@@ -193,6 +194,7 @@
       <button id="tabBtnPat" onclick="switchTab('pat')">Yatan Hastalar</button>
       <button id="tabBtnProf" onclick="switchTab('prof')">Proforma</button>
       <button id="tabBtnTalepler" onclick="switchTab('talepler')" style="display:none;">Talepler</button>
+      <button id="tabBtnSezon" onclick="switchTab('sezon')" style="display:none;">Sezon Değerlendirmesi</button>
       <button id="tabBtnRandevuTalebi" onclick="switchTab('randevu_talebi')" style="display:none;">Randevu Talebi</button>
       <button id="tabBtnProformaTalebi" onclick="switchTab('proforma_talebi')" style="display:none;">Proforma Talebi</button>
     </nav>
@@ -376,6 +378,61 @@
       </div>
     </section>
 
+    <!-- STAFF: SEZON DEĞERLENDİRMESİ -->
+    <section id="panelSezon" class="panel">
+      <div class="card">
+        <h2>Yeni Kayıt</h2>
+        <div class="row2">
+          <div>
+            <label>Geliş Tarihi *</label>
+            <input type="date" id="seDate">
+          </div>
+          <div>
+            <label>Dosya No</label>
+            <input type="text" id="seFileNo" placeholder="Varsa">
+          </div>
+        </div>
+        <label>İsim Soyisim *</label>
+        <input type="text" id="seName" placeholder="Hasta adı soyadı">
+        <label>Yapılan İşlem</label>
+        <input type="text" id="seProcedure" placeholder="Örn. MR, Biyokimya paneli, Nöroloji konsültasyonu...">
+        <label>Ödenmiş Toplam Tutar (TL) *</label>
+        <input type="text" id="seAmount" placeholder="Örn. 12500">
+        <button class="btn btn-primary" onclick="addSeasonEvaluation()">Kaydet</button>
+        <div class="status-msg" id="seStatus"></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" id="seSearch" placeholder="İsim veya dosya no ara" oninput="renderSeasonEvaluations()">
+          <input type="month" id="seFilterMonth" oninput="renderSeasonEvaluations()">
+        </div>
+        <button class="btn btn-ghost btn-small" onclick="clearSeasonFilter()" style="margin-bottom:12px;">Tüm Dönemi Göster</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h2 style="margin:0;">Kayıtlar</h2>
+          <button class="btn btn-small btn-ghost" onclick="exportSeasonToExcel()">Excel'e Aktar</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+            <thead>
+              <tr style="text-align:left;border-bottom:2px solid var(--line);">
+                <th style="padding:8px 6px;">Geliş Tarihi</th>
+                <th style="padding:8px 6px;">Dosya No</th>
+                <th style="padding:8px 6px;">İsim Soyisim</th>
+                <th style="padding:8px 6px;">Yapılan İşlem</th>
+                <th style="padding:8px 6px;text-align:right;">Ödenmiş Tutar</th>
+                <th style="padding:8px 6px;"></th>
+              </tr>
+            </thead>
+            <tbody id="seTableBody"><tr><td colspan="6" class="empty">Yükleniyor…</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
+          <span style="font-weight:700;font-size:14px;">Toplam: <span id="seTotal" style="font-family:var(--mono);color:var(--teal-dark);">0,00 TL</span></span>
+        </div>
+      </div>
+    </section>
+
     <!-- AGENT: RANDEVU TALEBİ -->
     <section id="panelRandevuTalebi" class="panel">
       <div class="card">
@@ -530,15 +587,16 @@ function fmtTimeTR(iso){
 function esc(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function switchTab(tab){
-  const tabs = ['appt','pat','prof','talepler','randevu_talebi','proforma_talebi'];
-  const btnIds = {appt:'tabBtnAppt', pat:'tabBtnPat', prof:'tabBtnProf', talepler:'tabBtnTalepler', randevu_talebi:'tabBtnRandevuTalebi', proforma_talebi:'tabBtnProformaTalebi'};
-  const panelIds = {appt:'panelAppt', pat:'panelPat', prof:'panelProf', talepler:'panelTalepler', randevu_talebi:'panelRandevuTalebi', proforma_talebi:'panelProformaTalebi'};
+  const tabs = ['appt','pat','prof','talepler','sezon','randevu_talebi','proforma_talebi'];
+  const btnIds = {appt:'tabBtnAppt', pat:'tabBtnPat', prof:'tabBtnProf', talepler:'tabBtnTalepler', sezon:'tabBtnSezon', randevu_talebi:'tabBtnRandevuTalebi', proforma_talebi:'tabBtnProformaTalebi'};
+  const panelIds = {appt:'panelAppt', pat:'panelPat', prof:'panelProf', talepler:'panelTalepler', sezon:'panelSezon', randevu_talebi:'panelRandevuTalebi', proforma_talebi:'panelProformaTalebi'};
   tabs.forEach(t=>{
     document.getElementById(btnIds[t]).classList.toggle('active', t===tab);
     document.getElementById(panelIds[t]).classList.toggle('active', t===tab);
   });
   if(tab==='prof' && services.length===0){ loadServices(); }
   if(tab==='talepler'){ loadApptRequests(); loadPfRequests(); loadProformaHistory(); }
+  if(tab==='sezon'){ loadSeasonEvaluations(); }
   if(tab==='randevu_talebi'){ loadMyApptRequests(); }
   if(tab==='proforma_talebi'){ loadMyPfRequests(); }
 }
@@ -609,6 +667,7 @@ async function startApp(){
     document.getElementById('tabBtnPat').style.display='none';
     document.getElementById('tabBtnProf').style.display='none';
     document.getElementById('tabBtnTalepler').style.display='none';
+    document.getElementById('tabBtnSezon').style.display='none';
     document.getElementById('tabBtnRandevuTalebi').style.display='inline-block';
     document.getElementById('tabBtnProformaTalebi').style.display='inline-block';
     populateDeptSelect('rtDept');
@@ -622,6 +681,7 @@ async function startApp(){
 
   // Staff view
   document.getElementById('tabBtnTalepler').style.display='inline-block';
+  document.getElementById('tabBtnSezon').style.display='inline-block';
   populateDeptSelect('aDept');
   populateDeptSelect('pfDept');
   setApptViewMode('daily');
@@ -1830,6 +1890,119 @@ async function updateRequestText(table, id, field, value, reload){
   const patch = {}; patch[field] = value;
   await db.from(table).update(patch).eq('id', id);
   if(reload) reload();
+}
+
+/* ================= STAFF: SEZON DEĞERLENDİRMESİ ================= */
+
+let seasonEvaluations = [];
+
+async function loadSeasonEvaluations(){
+  const {data, error} = await db.from('season_evaluations').select('*').order('arrival_date', {ascending:false});
+  seasonEvaluations = error ? [] : data;
+  renderSeasonEvaluations();
+}
+
+async function addSeasonEvaluation(){
+  const statusEl = document.getElementById('seStatus');
+  const date = document.getElementById('seDate').value;
+  const fileNo = document.getElementById('seFileNo').value.trim();
+  const name = document.getElementById('seName').value.trim();
+  const procedure = document.getElementById('seProcedure').value.trim();
+  const amountRaw = document.getElementById('seAmount').value.trim().replace(',', '.');
+  const amount = parseFloat(amountRaw);
+
+  if(!date || !name || isNaN(amount)){
+    statusEl.textContent = 'Lütfen zorunlu alanları doldurun (Geliş Tarihi, İsim Soyisim, Ödenmiş Tutar).';
+    statusEl.classList.add('err');
+    return;
+  }
+  statusEl.classList.remove('err');
+  statusEl.textContent = 'Kaydediliyor…';
+
+  const {error} = await db.from('season_evaluations').insert({
+    arrival_date: date, file_no: fileNo || null, patient_name: name,
+    procedure_done: procedure || null, amount_paid: amount
+  });
+  if(error){
+    statusEl.textContent = 'Kaydedilemedi: ' + error.message;
+    statusEl.classList.add('err');
+    return;
+  }
+  document.getElementById('seFileNo').value = '';
+  document.getElementById('seName').value = '';
+  document.getElementById('seProcedure').value = '';
+  document.getElementById('seAmount').value = '';
+  statusEl.textContent = 'Kayıt eklendi.';
+  await loadSeasonEvaluations();
+  setTimeout(()=>{ if(statusEl.textContent==='Kayıt eklendi.') statusEl.textContent=''; }, 2500);
+}
+
+async function deleteSeasonEvaluation(id){
+  await db.from('season_evaluations').delete().eq('id', id);
+  await loadSeasonEvaluations();
+}
+
+function clearSeasonFilter(){
+  document.getElementById('seFilterMonth').value = '';
+  document.getElementById('seSearch').value = '';
+  renderSeasonEvaluations();
+}
+
+function getFilteredSeasonEvaluations(){
+  const search = document.getElementById('seSearch').value.trim().toLowerCase();
+  const filterMonth = document.getElementById('seFilterMonth').value;
+  return seasonEvaluations.filter(e=>{
+    const matchesSearch = !search || e.patient_name.toLowerCase().includes(search) || (e.file_no||'').toLowerCase().includes(search);
+    const matchesMonth = !filterMonth || e.arrival_date.slice(0,7)===filterMonth;
+    return matchesSearch && matchesMonth;
+  });
+}
+
+function renderSeasonEvaluations(){
+  const filtered = getFilteredSeasonEvaluations();
+  const tbody = document.getElementById('seTableBody');
+
+  if(filtered.length===0){
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Kayıt bulunamadı.</td></tr>';
+    document.getElementById('seTotal').textContent = fmtMoney(0);
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(e=>`
+    <tr style="border-bottom:1px solid var(--line);">
+      <td style="padding:8px 6px;white-space:nowrap;">${fmtDateTR(e.arrival_date)}</td>
+      <td style="padding:8px 6px;font-family:var(--mono);">${esc(e.file_no||'')}</td>
+      <td style="padding:8px 6px;font-weight:600;">${esc(e.patient_name)}</td>
+      <td style="padding:8px 6px;">${esc(e.procedure_done||'')}</td>
+      <td style="padding:8px 6px;text-align:right;font-family:var(--mono);white-space:nowrap;">${fmtMoney(e.amount_paid)}</td>
+      <td style="padding:8px 6px;"><button class="btn-danger-text" onclick="deleteSeasonEvaluation('${e.id}')">Sil</button></td>
+    </tr>
+  `).join('');
+
+  const total = filtered.reduce((sum,e)=>sum + Number(e.amount_paid||0), 0);
+  document.getElementById('seTotal').textContent = fmtMoney(total);
+}
+
+function exportSeasonToExcel(){
+  const filtered = getFilteredSeasonEvaluations();
+  if(filtered.length===0){ alert('Dışa aktarılacak kayıt yok.'); return; }
+
+  const rows = filtered.map(e=>({
+    'Geliş Tarihi': fmtDateTR(e.arrival_date),
+    'Dosya No': e.file_no || '',
+    'İsim Soyisim': e.patient_name,
+    'Yapılan İşlem': e.procedure_done || '',
+    'Ödenmiş Toplam Tutar (TL)': Number(e.amount_paid||0)
+  }));
+  const total = filtered.reduce((sum,e)=>sum + Number(e.amount_paid||0), 0);
+  rows.push({'Geliş Tarihi':'', 'Dosya No':'', 'İsim Soyisim':'', 'Yapılan İşlem':'TOPLAM', 'Ödenmiş Toplam Tutar (TL)': total});
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:14},{wch:24},{wch:30},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sezon Değerlendirmesi');
+  const dateStr = todayISO();
+  XLSX.writeFile(wb, `sezon-degerlendirmesi-${dateStr}.xlsx`);
 }
 
 init();
