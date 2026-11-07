@@ -1493,7 +1493,11 @@ async function runAiProforma(){
   btn.disabled = true;
   st.textContent = 'AI analiz ediyor… (10-20 sn)';
   try{
-    const {data, error} = await db.functions.invoke('ai-proforma', {body:{anamnez}});
+    let data, error;
+    for(const fn of ['ai-proforma','super-api']){
+      ({data, error} = await db.functions.invoke(fn, {body:{anamnez}}));
+      if(!(error && error.context && error.context.status === 404)) break;
+    }
     if(error){
       let msg = error.message;
       try{ if(error.context && error.context.json){ const b = await error.context.json(); if(b && (b.error||b.message)) msg = (b.error||b.message); } }catch(_){}
