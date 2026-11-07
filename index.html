@@ -1494,7 +1494,12 @@ async function runAiProforma(){
   st.textContent = 'AI analiz ediyor… (10-20 sn)';
   try{
     const {data, error} = await db.functions.invoke('ai-proforma', {body:{anamnez}});
-    if(error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'Bilinmeyen hata');
+    if(error){
+      let msg = error.message;
+      try{ if(error.context && error.context.json){ const b = await error.context.json(); if(b && (b.error||b.message)) msg = (b.error||b.message); } }catch(_){}
+      throw new Error(msg);
+    }
+    if(!data || data.error) throw new Error((data && data.error) || 'Bilinmeyen hata');
     cart = [];
     data.items.forEach(it=>{
       const sv = services.find(x=>x.id===it.id);
