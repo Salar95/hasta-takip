@@ -1,34 +1,34 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hasta Takip Sistemi</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  :root{
-    --bg:#F3F6F5;
-    --card:#FFFFFF;
-    --line:#DCE6E3;
-    --ink:#152524;
-    --ink-muted:#5D716D;
-    --teal:#115BA4;
-    --teal-dark:#0C4178;
-    --teal-soft:#E4ECF6;
-    --amber:#B8791F;
-    --amber-soft:#FBF0DC;
-    --green:#2F7A52;
-    --green-soft:#E4F3EA;
-    --red:#B4432F;
-    --red-soft:#FBE9E5;
-    --radius:14px;
-    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
-  .app{max-width:720px;margin:0 auto;padding:0 0 40px;}
+      <div class="appt-main">
+        ${c.manual
+          ? `<input type="text" value="${esc(c.name_tr)}" onchange="setItemName('${c.id}', this.value)" style="font-size:13.5px;margin-bottom:4px;">`
+          : `<div class="name" style="font-size:13.5px;">${esc(c.name_tr)}</div>`}
+        ${c.aiReason ? `<div class="meta" style="color:var(--teal-dark);">✨ ${esc(c.aiReason)}</div>` : ''}
+        <div class="meta">
+          <input type="text" value="${String(c.price).replace('.',',')}" onchange="setPrice('${c.id}', this.value)" inputmode="decimal" style="width:90px;display:inline-block;padding:3px 6px;text-align:right;"> TL
+          × <input type="text" value="${c.qty}" onchange="setQty('${c.id}', this.value)" style="width:40px;display:inline-block;padding:3px 6px;text-align:center;">
+          = <b>${fmtMoney(c.price*c.qty)}</b>
+        </div>
+      </div>
+      <button class="btn-danger-text" onclick="removeFromCart('${c.id}')">Sil</button>
+    </div>
+  `).join('');
+  const total = cart.reduce((sum,c)=>sum + c.price*c.qty, 0);
+  document.getElementById('pfTotal').textContent = fmtMoney(total);
+}
 
-  header.top{background:linear-gradient(180deg,var(--teal) 0%,var(--teal-dark) 100%);color:#fff;padding:22px 20px 0;border-radius:0 0 22px 22px;}
-  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;font-weight:600;}
+/* ================= HAZIR ŞABLONLAR ================= */
+
+let templates = [];
+
+async function loadTemplates(){
+  const {data, error} = await db.from('proforma_templates').select('*').order('name');
+  templates = error ? [] : data;
+  const sel = document.getElementById('tplBranch');
+  if(!sel) return;
+  const cur = sel.value;
+  const branches = [...new Set([...doctors.map(d=>d.branch), ...templates.map(t=>t.branch)])].sort((a,b)=>a.localeCompare(b,'tr'));
+  sel.innerHTML = '<option value="">— Bölüm seçin —</option>' +
+    branches.map(b=>{
+      const n = templates.filter(t=>t.branch===b).length;
+      return `<option value="${esc(b)}">${esc(b)}${n?' ('+n+')':''}</option>`;
+    }).join('');
