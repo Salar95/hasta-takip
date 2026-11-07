@@ -337,6 +337,16 @@
         </select>
       </div>
 
+      <div class="card" style="border:1.5px solid var(--teal);">
+        <h2>✨ AI Proforma Önerisi</h2>
+        <label>Hasta öyküsü / Anamnez (yapıştırın)</label>
+        <textarea id="aiAnamnez" rows="6" placeholder="Hasta öyküsünü, şikayetleri, mevcut raporları buraya yapıştırın…"></textarea>
+        <button class="btn btn-primary" id="aiBtn" onclick="runAiProforma()">AI ile Proforma Öner</button>
+        <div class="status-msg" id="aiStatus"></div>
+        <div id="aiResult"></div>
+        <div class="meta" style="margin-top:8px;font-size:11.5px;">⚠ Öneriler taslaktır; kontrol edip düzenleyin. Hasta kimlik bilgilerini (TC, pasaport no) metne eklemeyin — metin harici bir AI servisine gönderilir.</div>
+      </div>
+
       <div class="card">
         <h2>Hizmet Ekle</h2>
         <label>Kategori</label>
@@ -348,6 +358,15 @@
           <option value="">— Önce kategori seçin —</option>
         </select>
         <button class="btn btn-primary" onclick="addSelectedToCart()">Sepete Ekle</button>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);">
+          <label>Listede olmayan kalem (manuel)</label>
+          <input type="text" id="manName" placeholder="Hizmet adı">
+          <div class="row2">
+            <div><input type="text" id="manPrice" placeholder="Fiyat (TL)" inputmode="decimal"></div>
+            <div><input type="text" id="manQty" placeholder="Adet" value="1" inputmode="numeric"></div>
+          </div>
+          <button class="btn btn-ghost" onclick="addManualItem()">Manuel Kalem Ekle</button>
+        </div>
       </div>
 
       <div class="card">
@@ -1401,6 +1420,40 @@ function setQty(serviceId, qty){
   renderCart();
 }
 
+function parsePrice(v){
+  v = String(v||'').trim().replace(/\s|TL/gi,'');
+  if(v.includes(',') ) v = v.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(v);
+  return isNaN(n) || n<0 ? null : n;
+}
+
+// Price edit affects this proforma only; the services table is untouched
+function setPrice(serviceId, v){
+  const item = cart.find(c=>c.id===serviceId);
+  const n = parsePrice(v);
+  if(!item || n===null){ renderCart(); return; }
+  item.price = n;
+  renderCart();
+}
+
+function setItemName(serviceId, v){
+  const item = cart.find(c=>c.id===serviceId);
+  if(!item || !v.trim()) { renderCart(); return; }
+  item.name_tr = v.trim();
+  item.name_en = v.trim();
+  renderCart();
+}
+
+function addManualItem(){
+  const name = document.getElementById('manName').value.trim();
+  const price = parsePrice(document.getElementById('manPrice').value);
+  const qty = Math.max(parseInt(document.getElementById('manQty').value,10)||1,1);
+  if(!name || price===null){ alert('Hizmet adı ve geçerli bir fiyat girin.'); return; }
+  cart.push({id:'m_'+Date.now()+'_'+Math.floor(Math.random()*1000), category:'Diğer', name_tr:name, name_en:name, sut_code:null, price, qty, manual:true});
+  document.getElementById('manName').value=''; document.getElementById('manPrice').value=''; document.getElementById('manQty').value='1';
+  renderCart();
+}
+
 function renderCart(){
   const box = document.getElementById('pfCart');
   if(cart.length===0){
@@ -1411,14 +1464,57 @@ function renderCart(){
   box.innerHTML = cart.map(c => `
     <div class="appt-row" style="padding:9px 0;">
       <div class="appt-main">
-        <div class="name" style="font-size:13.5px;">${esc(c.name_tr)}</div>
-        <div class="meta">${fmtMoney(c.price)} × <input type="text" value="${c.qty}" onchange="setQty('${c.id}', this.value)" style="width:40px;display:inline-block;padding:3px 6px;text-align:center;"> = <b>${fmtMoney(c.price*c.qty)}</b></div>
+        ${c.manual
+          ? `<input type="text" value="${esc(c.name_tr)}" onchange="setItemName('${c.id}', this.value)" style="font-size:13.5px;margin-bottom:4px;">`
+          : `<div class="name" style="font-size:13.5px;">${esc(c.name_tr)}</div>`}
+        ${c.aiReason ? `<div class="meta" style="color:var(--teal-dark);">✨ ${esc(c.aiReason)}</div>` : ''}
+        <div class="meta">
+          <input type="text" value="${String(c.price).replace('.',',')}" onchange="setPrice('${c.id}', this.value)" inputmode="decimal" style="width:90px;display:inline-block;padding:3px 6px;text-align:right;"> TL
+          × <input type="text" value="${c.qty}" onchange="setQty('${c.id}', this.value)" style="width:40px;display:inline-block;padding:3px 6px;text-align:center;">
+          = <b>${fmtMoney(c.price*c.qty)}</b>
+        </div>
       </div>
       <button class="btn-danger-text" onclick="removeFromCart('${c.id}')">Sil</button>
     </div>
   `).join('');
   const total = cart.reduce((sum,c)=>sum + c.price*c.qty, 0);
   document.getElementById('pfTotal').textContent = fmtMoney(total);
+}
+
+/* ================= AI PROFORMA ================= */
+
+async function runAiProforma(){
+  const anamnez = document.getElementById('aiAnamnez').value.trim();
+  const st = document.getElementById('aiStatus');
+  const btn = document.getElementById('aiBtn');
+  st.classList.remove('err');
+  if(anamnez.length < 10){ st.textContent = 'Önce hasta öyküsünü yapıştırın.'; st.classList.add('err'); return; }
+  if(cart.length>0 && !confirm('Mevcut sepet AI önerisiyle değiştirilecek. Devam edilsin mi?')) return;
+  btn.disabled = true;
+  st.textContent = 'AI analiz ediyor… (10-20 sn)';
+  try{
+    const {data, error} = await db.functions.invoke('ai-proforma', {body:{anamnez}});
+    if(error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'Bilinmeyen hata');
+    cart = [];
+    data.items.forEach(it=>{
+      const sv = services.find(x=>x.id===it.id);
+      if(sv) cart.push({id:sv.id, category:sv.category, name_tr:sv.name_tr, name_en:sv.name_en, sut_code:sv.sut_code, price:sv.price, qty:it.qty, aiReason:it.reason});
+    });
+    if(data.branch){
+      document.getElementById('pfDept').value = data.branch;
+      populateDoctorSelect('pfDept','pfDoctor');
+    }
+    renderCart();
+    document.getElementById('aiResult').innerHTML =
+      (data.patient_summary ? `<div class="meta" style="margin-top:8px;"><b>Özet:</b> ${esc(data.patient_summary)}</div>` : '') +
+      (data.branch ? `<div class="meta"><b>Önerilen branş:</b> ${esc(data.branch)} — doktoru siz seçin.</div>` : '') +
+      (data.notes ? `<div class="meta"><b>Not:</b> ${esc(data.notes)}</div>` : '');
+    st.textContent = cart.length + ' kalem önerildi. Aşağıda düzenleyebilirsiniz.';
+  }catch(e){
+    st.textContent = 'Hata: ' + e.message;
+    st.classList.add('err');
+  }
+  btn.disabled = false;
 }
 
 function fmtDateSlash(){
@@ -1846,10 +1942,12 @@ async function convertRequestToAppointment(requestId){
   refreshTaleplerBadge();
 }
 
+let pfRequestsCache = [];
 async function loadPfRequests(){
   const {data, error} = await db.from('proforma_requests').select('*').order('created_at', {ascending:false});
   const list = document.getElementById('pfRequestsList');
   if(error || !data || data.length===0){ list.innerHTML = '<div class="empty">Proforma talebi yok.</div>'; return; }
+  pfRequestsCache = data;
   list.innerHTML = data.map(r=>`
     <div class="card" style="margin-bottom:10px;">
       <div class="patient-name">${esc(r.patient_name)}</div>
@@ -1877,6 +1975,8 @@ function startProformaFromRequest(requestId, patientName, branch, doctor){
   document.getElementById('pfDept').value = branch;
   populateDoctorSelect('pfDept','pfDoctor');
   document.getElementById('pfDoctor').value = doctor;
+  const rq = pfRequestsCache.find(x=>x.id===requestId);
+  if(rq && rq.anamnezi) document.getElementById('aiAnamnez').value = rq.anamnezi;
   switchTab('prof');
   document.getElementById('pfStatus').textContent = 'Bu bir talebe karşılık oluşturuluyor — oluşturunca talep otomatik "Gönderildi" işaretlenecek.';
 }
